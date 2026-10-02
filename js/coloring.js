@@ -99,6 +99,7 @@
     this.undoStack = [];
     this.drawing = false;
     this.lastPt = null;
+    this.magicHue = 0; // rainbow cycle position for the magic brush
 
     this._bindPointer();
     this.render();
@@ -122,6 +123,7 @@
       self.pushUndo();
       self.drawing = true;
       self.lastPt = p;
+      try { if (window.CW_SFX) window.CW_SFX.stroke(); } catch (err) {}
       self._strokeTo(p); // dot on tap
     });
     cv.addEventListener("pointermove", function (e) {
@@ -143,6 +145,9 @@
   ColoringEngine.prototype._strokeTo = function (p) {
     var ctx = this.colorCtx;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (this.tool === "magic") { this._strokeMagic(p); return; }
+    if (this.tool === "glitter") { this._strokeGlitter(p); return; }
+    if (this.tool === "sparkle") { this._strokeSparkle(p); return; }
     if (this.tool === "eraser") {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
@@ -157,6 +162,91 @@
     ctx.lineTo(p.x + 0.01, p.y + 0.01);
     ctx.stroke();
     ctx.globalCompositeOperation = "source-over";
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* ---- premium effect brushes (magic / glitter / sparkle) ---- */
+
+  /* Magic brush: stroke cycles through rainbow hues as you draw. */
+  ColoringEngine.prototype._strokeMagic = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = this.brushSize;
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var steps = Math.max(1, Math.floor(dist / 8));
+    for (var i = 1; i <= steps; i++) {
+      var t0 = (i - 1) / steps, t1 = i / steps;
+      this.magicHue = (this.magicHue + 7) % 360;
+      ctx.strokeStyle = "hsl(" + (this.magicHue | 0) + ",95%,60%)";
+      ctx.beginPath();
+      ctx.moveTo(from.x + dx * t0, from.y + dy * t0);
+      ctx.lineTo(from.x + dx * t1 + 0.01, from.y + dy * t1 + 0.01);
+      ctx.stroke();
+    }
+    this.lastPt = p;
+    this.render();
+  };
+
+  var GLITTER_COLORS = ["#ffd93d", "#ff6b9d", "#4dabff", "#3ddc97", "#bf5af2", "#ffffff", "#ff9500"];
+
+  /* Glitter brush: trail of tiny multicolor sparkle dots along the stroke. */
+  ColoringEngine.prototype._strokeGlitter = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var steps = Math.max(1, Math.floor(dist / 10));
+    var spread = this.brushSize * 1.6;
+    for (var i = 0; i <= steps; i++) {
+      var t = i / steps;
+      var x = from.x + dx * t, y = from.y + dy * t;
+      for (var k = 0; k < 3; k++) {
+        var px = x + (Math.random() - 0.5) * spread;
+        var py = y + (Math.random() - 0.5) * spread;
+        var r = 2 + Math.random() * Math.max(3, this.brushSize * 0.16);
+        ctx.fillStyle = GLITTER_COLORS[(Math.random() * GLITTER_COLORS.length) | 0];
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* 4-point sparkle star stamp, drawn with curved points. */
+  ColoringEngine.prototype._sparkleStar = function (ctx, x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.quadraticCurveTo(x, y, x, y + r);
+    ctx.quadraticCurveTo(x, y, x - r, y);
+    ctx.quadraticCurveTo(x, y, x, y - r);
+    ctx.fill();
+  };
+
+  var SPARKLE_COLORS = ["#ffd93d", "#ffffff", "#ffb3d9", "#fff3b0"];
+
+  /* Sparkle effect: big star stamps scattered along the stroke. */
+  ColoringEngine.prototype._strokeSparkle = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var steps = Math.max(1, Math.floor(dist / 26));
+    var base = Math.max(10, this.brushSize * 0.7);
+    for (var i = 0; i <= steps; i++) {
+      var t = i / steps;
+      var x = from.x + dx * t + (Math.random() - 0.5) * base;
+      var y = from.y + dy * t + (Math.random() - 0.5) * base;
+      var r = base * (0.5 + Math.random() * 0.8);
+      this._sparkleStar(ctx, x, y, r, SPARKLE_COLORS[(Math.random() * SPARKLE_COLORS.length) | 0]);
+    }
     this.lastPt = p;
     this.render();
   };
@@ -178,6 +268,7 @@
       this.pushUndo();
       this.colorCtx.putImageData(colorImg, 0, 0);
       this.render(); this.onChange();
+      try { if (window.CW_SFX) window.CW_SFX.pop(); } catch (e) {}
     }
   };
 
@@ -262,6 +353,7 @@
     this.tapMode = !!opts.tapMode;
     this.drawing = false;
     this.lastPt = null;
+    this.magicHue = 0;
     this.undoStack = [];
     this.lineImageData = null;
     this.colorCtx.globalCompositeOperation = "source-over";
@@ -287,6 +379,21 @@
       ctx.drawImage(this.lineCanvas, 0, 0);
     }
     return out;
+  };
+
+  /* Restore a previously saved painting (work-in-progress) onto the paint layer. */
+  ColoringEngine.prototype.loadPainting = function (dataUrl, done) {
+    var self = this;
+    var img = new Image();
+    img.onload = function () {
+      self.colorCtx.globalCompositeOperation = "source-over";
+      self.colorCtx.clearRect(0, 0, SIZE, SIZE);
+      self.colorCtx.drawImage(img, 0, 0, SIZE, SIZE);
+      self.render();
+      if (done) done();
+    };
+    img.onerror = function () { if (done) done(new Error("wip load failed")); };
+    img.src = dataUrl;
   };
 
   var api = {
