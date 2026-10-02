@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Coloring Worlds</string>
+    <string name="title_activity_main">Coloring Worlds</string>
+    <string name="package_name">com.aara.coloringworlds</string>
+    <string name="custom_url_scheme">com.aara.coloringworlds</string>
+</resources>

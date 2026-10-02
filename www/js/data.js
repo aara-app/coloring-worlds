@@ -7,7 +7,10 @@
       id: id,
       title: title,
       file: "assets/pages/" + theme + "/" + id + ".png",
-      thumb: "assets/pages/" + theme + "/" + id + "-thumb.png"
+      thumb: "assets/pages/" + theme + "/" + id + "-thumb.png",
+      // ultra-simple bold versions for age 0-2
+      sfile: "assets/pages/" + theme + "/simple-" + id + ".png",
+      sthumb: "assets/pages/" + theme + "/simple-" + id + "-thumb.png"
     };
   }
 

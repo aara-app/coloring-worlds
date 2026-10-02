@@ -75,12 +75,14 @@
   }
 
   /* ================= home / themes ================= */
+  function isToddler() { return profile && profile.age === "0-2"; }
   function themeIcon(theme) {
     var p = theme.pages[0];
     for (var i = 0; i < theme.pages.length; i++) {
       if (theme.pages[i].id === theme.iconPage) { p = theme.pages[i]; break; }
     }
-    return p.thumb;
+    // 0-2 kids see the simple bold thumbnails everywhere
+    return (isToddler() && p.sthumb) ? p.sthumb : p.thumb;
   }
   function enterHome() {
     var grid = $("theme-grid");
@@ -111,7 +113,7 @@
       card.className = "page-card";
       card.setAttribute("aria-label", p.title);
       var img = document.createElement("img");
-      img.src = p.thumb;       // colored reference thumbnail
+      img.src = (isToddler() && p.sthumb) ? p.sthumb : p.thumb; // colored reference thumbnail (simple for 0-2)
       img.alt = p.title;
       img.loading = "lazy";
       card.appendChild(img);
@@ -164,15 +166,27 @@
     $("color-title").textContent = page ? page.title : "Free Draw";
     show("s-color");
     var tapMode = profile && profile.age === "0-2";
+    // 0-2 kids get the ultra-simple bold line art
+    var artFile = page ? (tapMode && page.sfile ? page.sfile : page.file) : null;
 
-    if (engine) { try { engine.canvas.remove(); } catch (e) {} }
+    // NEVER remove the canvas element from the DOM — reuse it across opens.
+    // Create the engine once, then reset its state for each new page.
     var cv = $("color-canvas");
-    engine = new window.CW_COLOR.ColoringEngine(cv, {
-      tapMode: tapMode,
-      defaultTool: tapMode ? "fill" : "brush",
-      defaultColor: PALETTE[0],
-      defaultBrush: tapMode ? 40 : 26
-    });
+    if (!engine) {
+      engine = new window.CW_COLOR.ColoringEngine(cv, {
+        tapMode: tapMode,
+        defaultTool: tapMode ? "fill" : "brush",
+        defaultColor: PALETTE[0],
+        defaultBrush: tapMode ? 40 : 26
+      });
+    } else {
+      engine.reset({
+        tapMode: tapMode,
+        defaultTool: tapMode ? "fill" : "brush",
+        defaultColor: PALETTE[0],
+        defaultBrush: tapMode ? 40 : 26
+      });
+    }
     buildPalette();
     setToolUI(tapMode ? "fill" : "brush");
 
@@ -188,9 +202,13 @@
 
     requestAnimationFrame(function () {
       fitCanvas();
-      if (page) {
-        engine.loadLineArt(page.file, function (err) {
-          if (err) toast("Could not load the picture");
+      if (page && artFile) {
+        engine.loadLineArt(artFile, function (err) {
+          if (err) {
+            // Fallback: blank canvas so the kid can still draw instead of a dead screen
+            engine.blank();
+            toast("Could not load the picture — free draw instead!");
+          }
           fitCanvas();
         });
       } else {

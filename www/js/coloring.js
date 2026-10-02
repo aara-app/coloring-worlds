@@ -252,6 +252,25 @@
     this.onChange();
   };
 
+  /* Reset all paint state without touching the DOM canvas element.
+   * Used when opening a new page: reuses the same canvas. */
+  ColoringEngine.prototype.reset = function (opts) {
+    opts = opts || {};
+    this.tool = opts.defaultTool || "brush";
+    this.color = opts.defaultColor || "#ff3b30";
+    this.brushSize = opts.defaultBrush || 26;
+    this.tapMode = !!opts.tapMode;
+    this.drawing = false;
+    this.lastPt = null;
+    this.undoStack = [];
+    this.lineImageData = null;
+    this.colorCtx.globalCompositeOperation = "source-over";
+    this.colorCtx.clearRect(0, 0, SIZE, SIZE);
+    this.lineCtx.globalCompositeOperation = "source-over";
+    this.lineCtx.clearRect(0, 0, SIZE, SIZE);
+    this.render();
+  };
+
   ColoringEngine.prototype.setColor = function (hex) { this.color = hex; if (this.tool === "eraser") this.tool = "brush"; };
   ColoringEngine.prototype.setTool = function (t) { this.tool = t; };
   ColoringEngine.prototype.setBrushSize = function (px) { this.brushSize = px; };
