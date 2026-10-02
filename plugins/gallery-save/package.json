@@ -1,0 +1,1 @@
+{"capacitor":{"android":{"src":"android"},"ios":{"src":"ios"}},"description":"Save images straight to the device photo gallery (Capacitor)","keywords":["capacitor","plugin","gallery","photo-library"],"name":"gallery-save","version":"1.0.0"}

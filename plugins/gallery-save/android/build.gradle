@@ -1,0 +1,14 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace "com.aara.gallerysave"
+    compileSdkVersion 34
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 34
+    }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+}

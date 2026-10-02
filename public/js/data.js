@@ -15,7 +15,8 @@
   }
 
   var THEMES = [
-    { id: "farm",        title: "Farm Animals",     common: true,  iconPage: "cow",
+    { id: "farm",        title: "Farm Animals",     common: true,  free: true,  iconPage: "cow",
+      gradient: "linear-gradient(160deg,#8ee06a 0%,#3faf4e 100%)",
       pages: [
         pg("farm", "cow", "Cow"), pg("farm", "pig", "Pig"),
         pg("farm", "chicken", "Chicken"), pg("farm", "horse", "Horse"),
@@ -23,7 +24,8 @@
         pg("farm", "tractor", "Tractor"), pg("farm", "duck", "Duck"),
         pg("farm", "goat", "Goat"), pg("farm", "farmer", "Farmer")
       ] },
-    { id: "wild",        title: "Wild Animals",     common: true,  iconPage: "lion",
+    { id: "wild",        title: "Wild Animals",     common: true,  free: true,  iconPage: "lion",
+      gradient: "linear-gradient(160deg,#ffb347 0%,#ff7b2e 100%)",
       pages: [
         pg("wild", "lion", "Lion"), pg("wild", "elephant", "Elephant"),
         pg("wild", "giraffe", "Giraffe"), pg("wild", "zebra", "Zebra"),
@@ -31,7 +33,8 @@
         pg("wild", "kangaroo", "Kangaroo"), pg("wild", "panda", "Panda"),
         pg("wild", "hippo", "Hippo"), pg("wild", "rhino", "Rhino")
       ] },
-    { id: "princess",    title: "Princess Castle",  genders: ["girl"], iconPage: "princess",
+    { id: "princess",    title: "Princess Castle",  genders: ["girl"], free: false, iconPage: "princess",
+      gradient: "linear-gradient(160deg,#ff9ecf 0%,#f0569d 100%)",
       pages: [
         pg("princess", "princess", "Princess"), pg("princess", "castle", "Castle"),
         pg("princess", "crown", "Crown"), pg("princess", "ballgown", "Ball Gown"),
@@ -39,7 +42,8 @@
         pg("princess", "magicwand", "Magic Wand"), pg("princess", "throne", "Throne"),
         pg("princess", "prince", "Prince"), pg("princess", "royalgarden", "Royal Garden")
       ] },
-    { id: "baby",        title: "Baby Animals",     genders: ["girl"], iconPage: "puppy",
+    { id: "baby",        title: "Baby Animals",     genders: ["girl"], free: false, iconPage: "puppy",
+      gradient: "linear-gradient(160deg,#c9a7f5 0%,#8b5cf0 100%)",
       pages: [
         pg("baby", "puppy", "Puppy"), pg("baby", "kitten", "Kitten"),
         pg("baby", "bunny", "Bunny"), pg("baby", "chick", "Chick"),
@@ -47,7 +51,8 @@
         pg("baby", "piglet", "Piglet"), pg("baby", "duckling", "Duckling"),
         pg("baby", "foal", "Foal"), pg("baby", "cub", "Lion Cub")
       ] },
-    { id: "dino",        title: "Dino Land",        genders: ["boy"],  iconPage: "trex",
+    { id: "dino",        title: "Dino Land",        genders: ["boy"],  free: false, iconPage: "trex",
+      gradient: "linear-gradient(160deg,#4fe3a5 0%,#0ea5a5 100%)",
       pages: [
         pg("dino", "trex", "T-Rex"), pg("dino", "triceratops", "Triceratops"),
         pg("dino", "brontosaurus", "Brontosaurus"), pg("dino", "stegosaurus", "Stegosaurus"),
@@ -55,7 +60,8 @@
         pg("dino", "volcano", "Volcano"), pg("dino", "dinofamily", "Dino Family"),
         pg("dino", "velociraptor", "Velociraptor"), pg("dino", "dinoegg", "Dino Egg")
       ] },
-    { id: "construction", title: "Construction Site", genders: ["boy"], iconPage: "bulldozer",
+    { id: "construction", title: "Construction Site", genders: ["boy"], free: false, iconPage: "bulldozer",
+      gradient: "linear-gradient(160deg,#5ec8ff 0%,#2f7fe0 100%)",
       pages: [
         pg("construction", "bulldozer", "Bulldozer"), pg("construction", "crane", "Crane"),
         pg("construction", "dumptruck", "Dump Truck"), pg("construction", "excavator", "Excavator"),
@@ -90,11 +96,19 @@
       svg: '<svg viewBox="0 0 48 48"><path d="M6 30c4-2 8 2 12 0s8 2 12 0 8 2 12 0v8H6v-8z" fill="#4dabff"/><path d="M14 22c4-6 12-8 18-4l4 6-8 2c-4 2-10 0-14-4z" fill="#ff9f43"/><circle cx="30" cy="20" r="1.6" fill="#223"/></svg>' }
   ];
 
-  var PALETTE = [
+  /* Studio palette: first 12 (brightest kid colors) free, rest premium-locked */
+  var PALETTE_FREE = [
     "#ff3b30", "#ff9500", "#ffcc00", "#34c759",
     "#00c7be", "#0a84ff", "#bf5af2", "#ff375f",
-    "#8b5a2b", "#000000", "#ffffff", "#8e8e93"
+    "#000000", "#ffffff", "#8b5a2b", "#8e8e93"
   ];
+  var PALETTE_LOCKED = [
+    "#5ac8fa", "#4cd964", "#ff2d92", "#ff6b6b",
+    "#7d4fc9", "#0d47a1", "#b26a00", "#2e7d32",
+    "#c2185b", "#00acc1", "#6d4c41", "#e6a817"
+  ];
+  /* legacy alias: default color etc. */
+  var PALETTE = PALETTE_FREE;
 
   function themeById(id) {
     for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
@@ -116,6 +130,7 @@
 
   window.CW_DATA = {
     THEMES: THEMES, INTERESTS: INTERESTS, PALETTE: PALETTE,
+    PALETTE_FREE: PALETTE_FREE, PALETTE_LOCKED: PALETTE_LOCKED,
     themeById: themeById, visibleThemes: visibleThemes
   };
 })();

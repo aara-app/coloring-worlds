@@ -1,1 +1,18 @@
-{"dependencies":{"@capacitor/core":"^6.1.0"},"description":"Coloring Worlds — safe offline coloring book for kids","devDependencies":{"@capacitor/android":"^6.1.0","@capacitor/cli":"^6.1.0","@capacitor/ios":"^6.1.0"},"name":"coloring-worlds","scripts":{"build":"node scripts/build-www.js","cap:sync":"npx cap sync"},"version":"1.0.0"}
+{
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "gallery-save": "file:plugins/gallery-save"
+  },
+  "description": "Coloring Worlds — safe offline coloring book for kids",
+  "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/ios": "^6.1.0"
+  },
+  "name": "coloring-worlds",
+  "scripts": {
+    "build": "node scripts/build-www.js",
+    "cap:sync": "npx cap sync"
+  },
+  "version": "1.0.0"
+}
