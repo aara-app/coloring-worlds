@@ -81,6 +81,8 @@
     colorPick: function () { note(880, 0.10, "sine", 0, 0.3); note(1320, 0.12, "sine", 0.06, 0.22); },
     /* subtle swish at the start of a brush stroke */
     stroke: function () { swish(0.16, 0.08); },
+    /* long soft whoosh for the train travel transition */
+    whoosh: function () { swish(1.0, 0.13); },
     /* descending blip for undo */
     undo: function () { note([600, 320], 0.14, "sine", 0, 0.35); },
     /* gentle low buzz for wrong/locked */

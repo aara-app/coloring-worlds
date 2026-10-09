@@ -15,6 +15,9 @@
   var profile = loadProfile();
   var engine = null;
   var currentTheme = null;
+  var currentPage = null;      // page open in the studio (null = free draw)
+  var studioTapMode = false;   // true while a 0-2 profile is in the studio
+  var fillModeSel = "solid";   // chosen fill style: solid | rainbow | dots | stars | stripes
   var obState = { gender: null, age: null, interests: [] };
 
   function $(id) { return document.getElementById(id); }
@@ -50,6 +53,40 @@
       var S = window.CW_SFX;
       if (S && typeof S[name] === "function") S[name]();
     } catch (e) {}
+  }
+
+  /* ================= finished pictures =================
+   * When a child taps Done, a small thumbnail of the finished picture is
+   * kept on-device: it rides as a "passenger" in that world's train cart
+   * and replaces the line-art thumbnail on the world screen. */
+  var FIN_KEY = "cw_finished_v1";
+  function finKey(themeId, pageId) { return themeId + ":" + pageId; }
+  function loadFinished() {
+    try { return JSON.parse(localStorage.getItem(FIN_KEY) || "{}") || {}; }
+    catch (e) { return {}; }
+  }
+  function saveFinishedMap(map) {
+    try { localStorage.setItem(FIN_KEY, JSON.stringify(map)); return; } catch (e) {}
+    // quota tight: drop the oldest half and retry once
+    var keys = Object.keys(map);
+    keys.slice(0, Math.ceil(keys.length / 2)).forEach(function (k) { delete map[k]; });
+    try { localStorage.setItem(FIN_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+  function recordFinished() {
+    if (!engine || !currentPage || !currentTheme) return;
+    try {
+      var full = engine.exportPNG();
+      var t = document.createElement("canvas");
+      t.width = 108; t.height = 108;
+      t.getContext("2d").drawImage(full, 0, 0, 108, 108);
+      var map = loadFinished();
+      map[finKey(currentTheme.id, currentPage.id)] = t.toDataURL("image/jpeg", 0.72);
+      saveFinishedMap(map);
+    } catch (e) {}
+  }
+  function finishedThumb(themeId, pageId) {
+    var map = loadFinished();
+    return map[finKey(themeId, pageId)] || null;
   }
 
   /* ================= onboarding ================= */
@@ -139,44 +176,258 @@
     // kids see thumbnails for their age tier everywhere
     return tierThumb(p);
   }
+  /* ================= home: the coloring train =================
+   * Engine + one cart per world. Kids drag the train sideways; tapping an
+   * unlocked cart makes the train "travel" into that world. Finished
+   * pictures ride in the carts as tiny passengers. */
+  var ENGINE_SVG =
+    '<svg viewBox="0 0 320 176" aria-hidden="true">' +
+    '<path d="M6 150 L40 118 L40 150 Z" fill="#c9334e"/>' +
+    '<rect x="36" y="66" width="158" height="66" rx="33" fill="#ef476f"/>' +
+    '<circle cx="44" cy="99" r="35" fill="#f0566b"/>' +
+    '<circle cx="44" cy="99" r="14" fill="#ffd93d"/>' +
+    '<rect x="58" y="18" width="30" height="52" rx="9" fill="#3a6ea5"/>' +
+    '<rect x="48" y="6" width="50" height="18" rx="9" fill="#2c5a8a"/>' +
+    '<path d="M118 70 a20 20 0 0 1 40 0 Z" fill="#ffd93d"/>' +
+    '<rect x="192" y="26" width="112" height="106" rx="16" fill="#ef476f"/>' +
+    '<rect x="192" y="26" width="112" height="22" rx="11" fill="#d13a63"/>' +
+    '<rect x="10" y="132" width="300" height="13" rx="6" fill="#8a4b2a"/>' +
+    '<rect x="10" y="128" width="300" height="6" rx="3" fill="#a05e33"/>' +
+    '</svg>';
+  var PUFF_COLORS = ["#ff6b9d", "#ffd93d", "#4dabff", "#3ddc97", "#a78bfa", "#ff9f43"];
+
+  function cartPassengers(theme) {
+    // finished pictures (+ any in-progress one) riding in this cart
+    var thumbs = [];
+    var fin = loadFinished();
+    theme.pages.forEach(function (p) {
+      var url = fin[finKey(theme.id, p.id)];
+      if (url) thumbs.push(url);
+    });
+    var wip = wipThumbFor(theme.id);
+    if (wip && thumbs.indexOf(wip) === -1) thumbs.push(wip);
+    return thumbs.slice(0, 4);
+  }
+
+  function buildCart(t, locked) {
+    var cart = document.createElement("button");
+    cart.className = "cart" + (locked ? " locked" : "");
+    cart.setAttribute("aria-label", t.title + (locked ? " (locked)" : ""));
+    var riders = document.createElement("span");
+    riders.className = "cart-riders";
+    var rimg = document.createElement("img");
+    rimg.src = "assets/train/cart-" + t.id + ".png";
+    rimg.alt = "";
+    rimg.loading = "lazy";
+    riders.appendChild(rimg);
+    cart.appendChild(riders);
+    var body = document.createElement("span");
+    body.className = "cart-body";
+    body.style.background = t.gradient;
+    var name = document.createElement("span");
+    name.className = "cart-name";
+    name.textContent = t.title;
+    body.appendChild(name);
+    var pass = cartPassengers(t);
+    if (pass.length) {
+      var strip = document.createElement("span");
+      strip.className = "cart-passengers";
+      pass.forEach(function (url) {
+        var im = document.createElement("img");
+        im.src = url; im.alt = "";
+        strip.appendChild(im);
+      });
+      body.appendChild(strip);
+    }
+    cart.appendChild(body);
+    if (locked) {
+      var cover = document.createElement("span");
+      cover.className = "cart-cover";
+      cover.innerHTML = '<span class="cover-lock">' + LOCK_SVG + '</span><span class="cover-zzz">Z z z</span>';
+      cart.appendChild(cover);
+    }
+    var wheels = document.createElement("span");
+    wheels.className = "cart-wheels";
+    wheels.innerHTML = '<span class="wheel"></span><span class="wheel"></span>';
+    cart.appendChild(wheels);
+    cart.addEventListener("click", function () {
+      if (locked) {
+        sfx("error");
+        toast("Ask a grown-up to unlock!");
+        cart.classList.remove("shake-it");
+        void cart.offsetWidth;
+        cart.classList.add("shake-it");
+        return;
+      }
+      travelTo(t, cart);
+    });
+    return cart;
+  }
+
   function enterHome() {
-    var grid = $("theme-grid");
-    grid.innerHTML = "";
+    var train = $("train");
+    train.innerHTML = "";
     var themes = window.CW_DATA.visibleThemes(profile.gender, profile.interests);
     var unlocked = isUnlocked();
     $("home-greeting").textContent = "Pick a world!";
+    // --- engine with the elephant driver in the cab ---
+    var eng = document.createElement("div");
+    eng.className = "engine";
+    eng.innerHTML =
+      '<span class="eng-smoke" id="eng-smoke"></span>' +
+      '<span class="eng-art">' + ENGINE_SVG + '</span>' +
+      '<span class="eng-cab"><img src="assets/driver.png" alt="Your train driver"></span>' +
+      '<span class="eng-wheels"><span class="wheel w-big"></span><span class="wheel"></span><span class="wheel"></span></span>';
+    train.appendChild(eng);
     themes.forEach(function (t) {
-      var locked = !t.free && !unlocked;
-      var card = document.createElement("button");
-      card.className = "theme-card";
-      card.style.background = t.gradient;
-      card.innerHTML = '<span class="lock-badge"' + (locked ? "" : " hidden") + ">" + LOCK_SVG + '</span>' +
-        '<img class="tart" alt="" loading="lazy"><span class="tname"></span><span class="tcount"></span>';
-      card.querySelector("img").src = themeIcon(t);
-      card.querySelector(".tname").textContent = t.title;
-      card.querySelector(".tcount").textContent = t.pages.length + " pictures";
-      card.addEventListener("click", function () { sfx("select"); openTheme(t.id); });
-      grid.appendChild(card);
+      train.appendChild(buildCart(t, !t.free && !unlocked));
     });
     show("s-home");
+    var vp = $("train-viewport");
+    vp.scrollLeft = 0;
+    trainAnim.lastSl = 0;
+    startTrainLoop();
   }
 
-  /* ================= page picker (carousel) ================= */
+  /* ---- train motion: parallax, wheel spin, smoke puffs ---- */
+  var trainAnim = { running: false, lastSl: 0, vel: 0, lastPuff: 0, travelBoost: 0 };
+  function startTrainLoop() {
+    if (trainAnim.running) return;
+    trainAnim.running = true;
+    trainAnim.lastTs = 0;
+    requestAnimationFrame(trainLoop);
+  }
+  function trainLoop(ts) {
+    var home = $("s-home");
+    if (!home || !home.classList.contains("active")) { trainAnim.running = false; return; }
+    var vp = $("train-viewport");
+    var sl = vp.scrollLeft;
+    var vel = sl - trainAnim.lastSl;
+    trainAnim.lastSl = sl;
+    trainAnim.vel = trainAnim.vel * 0.82 + vel * 0.18;
+    var speed = Math.abs(trainAnim.vel);
+    // wheels: one full turn per ~215px of travel
+    $("train").style.setProperty("--wrot", ((sl * 360 / 215) % 360).toFixed(1) + "deg");
+    // parallax: far layers drift slower than the train
+    var boost = trainAnim.travelBoost;
+    $("ts-clouds").style.backgroundPositionX = (-(sl * 0.22 + boost * 0.5)).toFixed(1) + "px";
+    $("ts-hills").style.backgroundPositionX = (-(sl * 0.5 + boost)).toFixed(1) + "px";
+    if (trainAnim.travelBoost > 0) trainAnim.travelBoost *= 0.94;
+    // smoke puffs: gentle idle rate, a little faster while rolling
+    var interval = speed > 4 ? 230 : 640;
+    if (!trainAnim.lastTs || ts - trainAnim.lastPuff > interval) {
+      spawnPuff(speed);
+      trainAnim.lastPuff = ts;
+    }
+    trainAnim.lastTs = ts;
+    requestAnimationFrame(trainLoop);
+  }
+  function spawnPuff(speed) {
+    var layer = $("puff-layer"), anchor = $("eng-smoke"), scene = $("train-scene");
+    if (!layer || !anchor || !scene) return;
+    if (layer.childElementCount > 14) return;
+    var sr = scene.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+    var puff = document.createElement("span");
+    puff.className = "puff";
+    var size = 15 + Math.random() * 15 + Math.min(10, speed * 0.7);
+    puff.style.width = size + "px";
+    puff.style.height = size + "px";
+    puff.style.background = PUFF_COLORS[(Math.random() * PUFF_COLORS.length) | 0];
+    puff.style.left = (ar.left - sr.left + ar.width / 2 - size / 2) + "px";
+    puff.style.top = (ar.top - sr.top - size * 0.4) + "px";
+    layer.appendChild(puff);
+    var drift = -14 - Math.random() * 22 - speed * 1.5;
+    var rise = 74 + Math.random() * 46;
+    var anim = puff.animate([
+      { transform: "translate(0,0) scale(.55)", opacity: 0.85 },
+      { transform: "translate(" + drift + "px," + (-rise) + "px) scale(1.65)", opacity: 0 }
+    ], { duration: 1500 + Math.random() * 500, easing: "ease-out" });
+    anim.onfinish = function () { puff.remove(); };
+  }
+
+  /* Mouse drag-to-scroll for the train (touch uses native momentum
+   * scrolling). A real drag suppresses the cart click on release. */
+  (function initTrainDrag() {
+    var vp = $("train-viewport");
+    if (!vp) return;
+    var down = null;
+    vp.addEventListener("pointerdown", function (e) {
+      if (e.pointerType !== "mouse") return;
+      down = { x: e.clientX, sl: vp.scrollLeft, moved: false };
+    });
+    vp.addEventListener("pointermove", function (e) {
+      if (!down) return;
+      var dx = e.clientX - down.x;
+      if (Math.abs(dx) > 8) down.moved = true;
+      if (down.moved) vp.scrollLeft = down.sl - dx;
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+      vp.addEventListener(ev, function () {
+        if (down && down.moved) {
+          var suppress = function (ce) { ce.stopPropagation(); ce.preventDefault(); };
+          vp.addEventListener("click", suppress, { capture: true, once: true });
+          setTimeout(function () { vp.removeEventListener("click", suppress, { capture: true }); }, 120);
+        }
+        down = null;
+      });
+    });
+  })();
+
+  /* ---- travel transition: the train rushes, then the world opens ---- */
+  var traveling = false;
+  function travelTo(theme, cartEl) {
+    if (traveling) return;
+    traveling = true;
+    sfx("whoosh");
+    var scene = $("train-scene"), vp = $("train-viewport");
+    scene.classList.add("traveling");
+    // roll the train so the chosen cart glides to the middle
+    var target = Math.max(0, cartEl.offsetLeft - vp.clientWidth / 2 + cartEl.clientWidth / 2);
+    var start = vp.scrollLeft, t0 = performance.now(), dur = 1050;
+    (function step(now) {
+      var t = Math.min(1, (now - t0) / dur);
+      var e = t * t * (3 - 2 * t); // smoothstep
+      vp.scrollLeft = start + (target - start) * e;
+      trainAnim.travelBoost += 26 * (1 - t);
+      if (t < 1) requestAnimationFrame(step);
+    })(t0);
+    setTimeout(function () {
+      scene.classList.remove("traveling");
+      traveling = false;
+      openTheme(theme.id);
+    }, 1180);
+  }
+
+  /* ================= world screen (picture picker) =================
+   * Full-bleed world color, big rounded title, the 10 pictures as big
+   * white cards in two horizontal scrolling rows. Finished pictures
+   * show their colored version with a gold star. */
   function openTheme(themeId) {
     currentTheme = window.CW_DATA.themeById(themeId);
+    if (!currentTheme) { enterHome(); return; }
     var themeLocked = !currentTheme.free && !isUnlocked();
+    var scr = $("s-pages");
+    scr.style.background = currentTheme.gradient;
     $("pages-title").textContent = currentTheme.title;
-    var grid = $("page-grid");
-    grid.innerHTML = "";
-    currentTheme.pages.forEach(function (p) {
+    var fin = loadFinished();
+    var rows = [$("page-row-1"), $("page-row-2")];
+    rows.forEach(function (r) { r.innerHTML = ""; });
+    currentTheme.pages.forEach(function (p, idx) {
+      var doneUrl = fin[finKey(currentTheme.id, p.id)];
       var card = document.createElement("button");
       card.className = "page-card";
       card.setAttribute("aria-label", p.title + (themeLocked ? " (locked)" : ""));
       var img = document.createElement("img");
-      img.src = tierThumb(p); // reference thumbnail for the child's age tier
+      img.src = doneUrl || tierThumb(p); // finished art wins over line art
       img.alt = p.title;
       img.loading = "lazy";
       card.appendChild(img);
+      if (doneUrl && !themeLocked) {
+        var star = document.createElement("span");
+        star.className = "done-badge";
+        star.textContent = "★";
+        card.appendChild(star);
+      }
       if (themeLocked) {
         var badge = document.createElement("span");
         badge.className = "lock-badge";
@@ -193,12 +444,10 @@
         card.classList.add("sel");
         setTimeout(function () { openColor(p); }, 140);
       });
-      grid.appendChild(card);
+      rows[idx < 5 ? 0 : 1].appendChild(card);
     });
-    var hint = $("carousel-hint");
-    if (hint) hint.style.display = currentTheme.pages.length > 1 ? "" : "none";
     show("s-pages");
-    grid.scrollLeft = 0;
+    rows.forEach(function (r) { r.scrollLeft = 0; });
   }
 
   /* ================= coloring studio ================= */
@@ -309,6 +558,96 @@
     });
   }
 
+  /* ---- fill styles popup: solid free; rainbow + patterns premium ---- */
+  var FILL_STYLES = [
+    { id: "solid", label: "Solid", cls: "fill-solid",
+      svg: '<svg viewBox="0 0 24 24"><path d="M12 3s6 6.3 6 10.2A6 6 0 0 1 6 13.2C6 9.3 12 3 12 3z" fill="#fff"/></svg>' },
+    { id: "rainbow", label: "Rainbow", cls: "fill-rainbow",
+      svg: '<svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0h-3.2a4.8 4.8 0 0 0-9.6 0H4z" fill="#fff"/></svg>' },
+    { id: "dots", label: "Dots", cls: "fill-dots",
+      svg: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6" fill="#fff"/><circle cx="17" cy="6" r="2.6" fill="#fff"/><circle cx="11.5" cy="12" r="2.6" fill="#fff"/><circle cx="6" cy="18" r="2.6" fill="#fff"/><circle cx="17" cy="18" r="2.6" fill="#fff"/></svg>' },
+    { id: "stars", label: "Stars", cls: "fill-stars",
+      svg: '<svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.2 5.6 2.4-5.6 2.4L12 18.2l-2.4-5.2L4 10.6l5.6-2.4L12 3z" fill="#fff"/></svg>' },
+    { id: "stripes", label: "Stripes", cls: "fill-stripes",
+      svg: '<svg viewBox="0 0 24 24"><path d="M5 19L19 5l1.8 1.8L6.8 20.8 5 19zM3.2 12.2L12.2 3.2l1.8 1.8L5 14l-1.8-1.8zM10 21l9-9 1.8 1.8-9 9L10 21z" fill="#fff"/></svg>' }
+  ];
+  function toggleFillPop(force) {
+    var pop = $("fill-pop");
+    if (!pop) return;
+    var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
+    if (showIt) buildFillPop();
+    pop.classList.toggle("hidden", !showIt);
+  }
+  function buildFillPop() {
+    var pop = $("fill-pop");
+    pop.innerHTML = "";
+    var unlocked = isUnlocked();
+    FILL_STYLES.forEach(function (fs) {
+      var premium = fs.id !== "solid";
+      var b = document.createElement("button");
+      b.className = "fx-btn " + fs.cls + (fillModeSel === fs.id ? " sel" : "");
+      b.innerHTML = '<span class="fx-ico">' + fs.svg + "</span><span>" + fs.label + "</span>" +
+        (premium && !unlocked ? '<span class="fx-lock">' + LOCK_SVG + "</span>" : "");
+      b.addEventListener("click", function () {
+        if (premium && !unlocked) { sfx("error"); toast("Unlock for rainbow & pattern fills!"); return; }
+        fillModeSel = fs.id;
+        if (engine) engine.setFillMode(fillModeSel);
+        sfx("select");
+        toggleFillPop(false);
+      });
+      pop.appendChild(b);
+    });
+  }
+
+  /* ---- sparkle burst where a fill lands (DOM particles over canvas) ---- */
+  var SPARK_COLORS = ["#ffd93d", "#ffffff", "#ff6b9d", "#4dabff", "#3ddc97", "#a78bfa"];
+  function sparkleBurst(x, y) {
+    var wrap = $("canvas-wrap"), layer = $("fx-layer"), cv = $("color-canvas");
+    if (!wrap || !layer || !cv) return;
+    var wr = wrap.getBoundingClientRect(), cr = cv.getBoundingClientRect();
+    if (!cr.width) return;
+    var px = cr.left - wr.left + (x / 1024) * cr.width;
+    var py = cr.top - wr.top + (y / 1024) * cr.height;
+    for (var i = 0; i < 12; i++) {
+      var s = document.createElement("span");
+      s.className = "spark";
+      s.style.background = SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0];
+      s.style.left = px + "px";
+      s.style.top = py + "px";
+      layer.appendChild(s);
+      var ang = Math.random() * Math.PI * 2;
+      var dist = 22 + Math.random() * 46;
+      var dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 12;
+      var anim = s.animate([
+        { transform: "rotate(45deg) scale(1)", opacity: 1 },
+        { transform: "translate(" + dx.toFixed(0) + "px," + dy.toFixed(0) + "px) rotate(215deg) scale(.15)", opacity: 0 }
+      ], { duration: 460 + Math.random() * 280, easing: "cubic-bezier(.17,.67,.35,1)" });
+      anim.onfinish = (function (el) { return function () { el.remove(); }; })(s);
+    }
+  }
+
+  /* ---- confetti celebration when a picture is finished ---- */
+  function celebrate() {
+    var layer = $("confetti-layer");
+    if (!layer) return;
+    for (var i = 0; i < 42; i++) {
+      var p = document.createElement("span");
+      p.className = "confetti-piece";
+      p.style.background = SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0];
+      p.style.left = (Math.random() * 100).toFixed(1) + "vw";
+      if (Math.random() < 0.4) p.style.borderRadius = "50%";
+      layer.appendChild(p);
+      var drift = (Math.random() * 170 - 85).toFixed(0);
+      var fall = Math.round(window.innerHeight * (0.78 + Math.random() * 0.28));
+      var spin = 320 + Math.random() * 420;
+      var anim = p.animate([
+        { transform: "translate(0,-4vh) rotate(0deg)", opacity: 1 },
+        { transform: "translate(" + drift + "px," + fall + "px) rotate(" + spin.toFixed(0) + "deg)", opacity: 0.92 }
+      ], { duration: 1250 + Math.random() * 650, delay: Math.random() * 180, easing: "cubic-bezier(.2,.6,.4,1)" });
+      anim.onfinish = (function (el) { return function () { el.remove(); }; })(p);
+    }
+  }
+
   function toggleSizePop(force) {
     var pop = $("size-pop");
     var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
@@ -322,9 +661,11 @@
 
   function openColor(page) {
     // page may be null => free draw
+    currentPage = page || null;
     $("color-title").textContent = page ? page.title : "Free Draw";
     show("s-color");
     var tapMode = profile && profile.age === "0-2";
+    studioTapMode = !!tapMode;
     // line art for the child's age tier (simple / regular / detail)
     var artFile = page ? tierFile(page) : null;
 
@@ -337,7 +678,8 @@
         defaultTool: tapMode ? "fill" : "brush",
         defaultColor: currentColor,
         defaultBrush: tapMode ? 40 : 26,
-        onChange: scheduleWipSave
+        onChange: scheduleWipSave,
+        onFill: function (x, y) { sparkleBurst(x, y); }
       });
     } else {
       engine.reset({
@@ -347,11 +689,13 @@
         defaultBrush: tapMode ? 40 : 26
       });
     }
+    engine.setFillMode(fillModeSel);
     buildColorGrid();
     setColorDot(currentColor);
     setToolUI(tapMode ? "fill" : "brush");
     toggleSizePop(false);
     toggleFxPop(false);
+    toggleFillPop(false);
 
     // age-adaptive toolbar: toddlers only get tap-to-fill
     var brushBtn = $("tool-brush");
@@ -399,6 +743,16 @@
     } catch (e) {}
   }
   function clearWip() { try { localStorage.removeItem(WIP_KEY); } catch (e) {} }
+  /* Thumbnail of the in-progress picture for a theme (train passenger). */
+  function wipThumbFor(themeId) {
+    try {
+      var wip = JSON.parse(localStorage.getItem(WIP_KEY) || "null");
+      if (wip && wip.dataUrl && wip.key && wip.key.indexOf("page:" + themeId + ":") === 0) {
+        if (Date.now() - (wip.at || 0) <= 7 * 24 * 3600 * 1000) return wip.dataUrl;
+      }
+    } catch (e) {}
+    return null;
+  }
   function restoreWip() {
     if (!engine || !wipPageKey) return;
     var raw = null;
@@ -420,13 +774,16 @@
       sfx("tap");
       toggleSizePop(false);
       toggleFxPop(false);
+      toggleFillPop(false);
     });
     $("tool-fill").addEventListener("click", function () {
+      if (engine && engine.tool === "fill" && !studioTapMode) { toggleFillPop(); return; } // tap again => fill styles
       if (engine) engine.setTool("fill");
       setToolUI("fill");
       sfx("tap");
       toggleSizePop(false);
       toggleFxPop(false);
+      toggleFillPop(false);
     });
     $("tool-eraser").addEventListener("click", function () {
       if (engine) engine.setTool("eraser");
@@ -434,10 +791,12 @@
       sfx("tap");
       toggleSizePop(false);
       toggleFxPop(false);
+      toggleFillPop(false);
     });
     $("tool-fx").addEventListener("click", function () {
       sfx("tap");
       toggleSizePop(false);
+      toggleFillPop(false);
       toggleFxPop();
     });
     $("btn-color").addEventListener("click", function () {
@@ -476,6 +835,11 @@
           !fx.contains(e.target) && e.target.closest("#tool-fx") === null) {
         toggleFxPop(false);
       }
+      var fp = $("fill-pop");
+      if (fp && !fp.classList.contains("hidden") &&
+          !fp.contains(e.target) && e.target.closest("#tool-fill") === null) {
+        toggleFillPop(false);
+      }
     });
     $("color-back").addEventListener("click", function () { show("s-pages"); });
     $("pages-back").addEventListener("click", function () { enterHome(); });
@@ -486,16 +850,32 @@
   }
 
   /* One tap on Done = finished picture saved straight to the photo gallery.
-   * No share sheet, no confirmation dialog. */
+   * No share sheet, no confirmation dialog. A confetti celebration plays,
+   * and the finished picture becomes a passenger in its world's cart. */
   var saving = false;
+  function backToPicker() {
+    if (currentTheme) openTheme(currentTheme.id); // rebuild: colored thumb + star
+    else enterHome();
+  }
   function doneAndSave() {
     if (saving) return;
     if (!engine) { show("s-pages"); return; }
     saving = true;
     saveToGallery().then(
-      function () { sfx("fanfare"); toast("Saved to photos!"); },
-      function () { toast("Couldn't save this time"); }
-    ).then(function () { saving = false; show("s-pages"); });
+      function () {
+        sfx("fanfare");
+        recordFinished();
+        clearWip();
+        celebrate();
+        toast("Saved to photos!");
+        setTimeout(function () { saving = false; backToPicker(); }, 1150);
+      },
+      function () {
+        toast("Couldn't save this time");
+        saving = false;
+        show("s-pages");
+      }
+    );
   }
 
   function saveToGallery() {

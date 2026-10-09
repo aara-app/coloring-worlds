@@ -108,7 +108,10 @@
   var PALETTE_LOCKED = [
     "#5ac8fa", "#4cd964", "#ff2d92", "#ff6b6b",
     "#7d4fc9", "#0d47a1", "#b26a00", "#2e7d32",
-    "#c2185b", "#00acc1", "#6d4c41", "#e6a817"
+    "#c2185b", "#00acc1", "#6d4c41", "#e6a817",
+    "#ff8a80", "#ffd180", "#ffff8d", "#ccff90",
+    "#a7ffeb", "#80d8ff", "#8c9eff", "#ea80fc",
+    "#795548", "#607d8b", "#26a69a", "#d4e157"
   ];
   /* legacy alias: default color etc. */
   var PALETTE = PALETTE_FREE;
