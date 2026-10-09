@@ -16,7 +16,10 @@
   <section id="s-welcome" class="screen">
     <div class="welcome-wrap">
       <h1 class="welcome-logo"><span class="wl-1">Coloring</span> <span class="wl-2">Worlds</span></h1>
-      <img class="welcome-mascot" src="assets/mascot.png" alt="Coloring Worlds mascot">
+      <div class="welcome-hero">
+        <img class="welcome-rainbow" src="assets/train/rainbow.png" alt="" aria-hidden="true">
+        <img class="welcome-mascot" src="assets/mascot.png" alt="Coloring Worlds mascot">
+      </div>
       <p class="welcome-tag">A safe coloring adventure<br>for little artists!</p>
       <button id="btn-welcome-start" class="welcome-cta">Let's Start!</button>
     </div>
@@ -70,7 +73,7 @@
   <!-- ============ ONBOARDING: interests ============ -->
   <section id="s-ob3" class="screen">
     <div class="ob-wrap">
-      <button class="back-btn" data-back="s-ob2" aria-label="Back">&#8592;</button>
+      <button class="back-btn" data-back="s-ob2" aria-label="Back"><img src="assets/ui/back.png" alt=""></button>
       <h1 class="ob-title">What do they love?</h1>
       <p class="ob-sub">Pick up to 3</p>
       <div class="interest-grid" id="interest-grid"></div>
@@ -83,15 +86,16 @@
     <header class="topbar">
       <div class="topbar-title" id="home-greeting">Pick a world!</div>
       <button id="btn-freedraw-top" class="icon-btn" aria-label="Free draw" title="Free draw">
-        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>
+        <img src="assets/ui/crayon.png" alt="">
       </button>
       <button id="btn-unlock-home" class="unlock-pill" aria-label="Unlock all">
-        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z" fill="currentColor"/></svg>
+        <img src="assets/ui/lock.png" alt="">
         <span>Unlock all</span>
       </button>
     </header>
     <div class="train-scene" id="train-scene" aria-label="Coloring train — pick a world">
       <div class="ts-sun" aria-hidden="true"></div>
+      <div class="ts-rainbow" id="ts-rainbow" aria-hidden="true"></div>
       <div class="ts-layer ts-clouds" id="ts-clouds" aria-hidden="true"></div>
       <div class="ts-layer ts-hills" id="ts-hills" aria-hidden="true"></div>
       <div class="train-viewport" id="train-viewport">
@@ -107,7 +111,7 @@
       <button id="btn-freedraw" class="cta-btn secondary">Free Draw</button>
       <div class="home-links">
         <button id="btn-restore-home" class="grown-link restore-link">
-          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z" fill="currentColor"/></svg>
+          <img src="assets/ui/restore.png" alt="">
           Restore Purchases
         </button>
         <button id="btn-grown" class="grown-link">Grown-ups</button>
@@ -119,10 +123,10 @@
   <section id="s-pages" class="screen world-screen">
     <header class="topbar world-topbar">
       <button class="icon-btn" id="pages-back" aria-label="Back to the train">
-        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <img src="assets/ui/back.png" alt="">
       </button>
       <div class="world-title" id="pages-title">Pages</div>
-      <span class="topbar-spacer"></span>
+      <img class="world-mascot" id="pages-mascot" src="assets/train/cart-farm.png" alt="" aria-hidden="true">
     </header>
     <div class="world-rows">
       <div class="world-row" id="page-row-1"></div>
@@ -135,7 +139,7 @@
   <section id="s-color" class="screen">
     <header class="topbar color-topbar">
       <button class="icon-btn" id="color-back" aria-label="Back">
-        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <img src="assets/ui/back.png" alt="">
       </button>
       <div class="topbar-title" id="color-title">Color!</div>
       <span class="topbar-spacer"></span>
@@ -147,28 +151,28 @@
       </div>
       <div class="side-tools" id="side-tools" aria-label="Coloring tools">
         <button class="side-btn" id="tool-done" aria-label="Done">
-          <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/></svg>
+          <img src="assets/ui/check.png" alt="">
         </button>
         <button class="side-btn" id="tool-brush" aria-label="Brush">
-          <svg viewBox="0 0 24 24"><path d="M7 16c.55 0 1 .45 1 1 0 1.41-.61 2.72-1.58 3.66l-1.42.94-.75-.75 1.42-1.42A3.98 3.98 0 0 1 7 17c0-.55.45-1 1-1zm11.71-8.71a1 1 0 0 0 0-1.41l-8.42-8.42-2.83 2.83 8.42 8.42a1 1 0 0 0 1.41 0l1.42-1.42z" fill="currentColor" transform="translate(0,2)"/></svg>
+          <img src="assets/ui/brush.png" alt="">
         </button>
         <button class="side-btn" id="tool-fill" aria-label="Paint bucket">
-          <svg viewBox="0 0 24 24"><path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 0 0 0 2.12l5.15 5.15a1.49 1.49 0 0 0 2.12 0l5.85-5.85a1.49 1.49 0 0 0 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z" fill="currentColor"/></svg>
+          <img src="assets/ui/bucket.png" alt="">
         </button>
         <button class="side-btn" id="tool-fx" aria-label="Magic brushes">
-          <svg viewBox="0 0 24 24"><path d="M5.2 20.8L4 19.6l9.2-9.2 1.2 1.2-9.2 9.2z" fill="currentColor"/><path d="M15.5 1.5l1.9 3.9 3.9 1.9-3.9 1.9-1.9 3.9-1.9-3.9-3.9-1.9 3.9-1.9 1.9-3.9z" fill="currentColor"/><path d="M20.5 13.5l.9 1.8 1.8.9-1.8.9-.9 1.8-.9-1.8-1.8-.9 1.8-.9.9-1.8z" fill="currentColor"/><circle cx="6.5" cy="6" r="1.3" fill="currentColor"/></svg>
+          <img src="assets/ui/wand.png" alt="">
         </button>
         <button class="side-btn color-dot" id="btn-color" aria-label="Choose color">
           <span class="color-dot-inner" id="color-dot-inner"></span>
         </button>
         <button class="side-btn" id="tool-eraser" aria-label="Eraser">
-          <svg viewBox="0 0 24 24"><path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.01 4.01 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.73l3.54 3.53a1 1 0 0 0 1.42 0l3.53-3.53-4.95-4.94-3.54 3.54z" fill="currentColor"/></svg>
+          <img src="assets/ui/eraser.png" alt="">
         </button>
         <button class="side-btn" id="tool-undo" aria-label="Undo">
-          <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" fill="currentColor"/></svg>
+          <img src="assets/ui/undo.png" alt="">
         </button>
         <button class="side-btn" id="tool-clear" aria-label="Clear all">
-          <svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>
+          <img src="assets/ui/trash.png" alt="">
         </button>
       </div>
     </div>
@@ -187,7 +191,7 @@
   <!-- ============ COLOR PICKER POPUP ============ -->
   <div id="color-modal" class="modal hidden">
     <div class="modal-card color-card">
-      <button class="modal-x" id="color-close" aria-label="Close">&times;</button>
+      <button class="modal-x" id="color-close" aria-label="Close"><img src="assets/ui/close.png" alt=""></button>
       <h2>Pick a color!</h2>
       <div class="color-grid" id="color-grid"></div>
       <p class="color-note" id="color-note">More colors with Unlock All!</p>
@@ -197,6 +201,7 @@
   <!-- ============ GROWN-UPS GATE ============ -->
   <div id="gate-modal" class="modal hidden">
     <div class="modal-card">
+      <img class="gate-ico" src="assets/ui/lock.png" alt="" aria-hidden="true">
       <h2>Grown-ups only</h2>
       <p>Hold the button for 3 seconds to continue.</p>
       <button id="gate-hold">Hold me</button>
@@ -206,7 +211,7 @@
   </div>
   <div id="math-modal" class="modal hidden">
     <div class="modal-card numpad-card">
-      <button class="modal-x" id="math-cancel" aria-label="Close">&times;</button>
+      <button class="modal-x" id="math-cancel" aria-label="Close"><img src="assets/ui/close.png" alt=""></button>
       <h2>Solve the problem<br>to continue</h2>
       <div class="numpad-answer" id="math-q">60 + 5 = <span id="math-entry"></span><span class="caret"></span></div>
       <div class="numpad" id="numpad">
@@ -222,33 +227,38 @@
   <section id="s-grown" class="screen">
     <header class="topbar">
       <button class="icon-btn" id="grown-back" aria-label="Back">
-        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <img src="assets/ui/back.png" alt="">
       </button>
       <div class="topbar-title">Grown-ups</div>
       <span class="topbar-spacer"></span>
     </header>
     <div class="grown-body">
       <div class="grown-card">
+        <img class="grown-ico" src="assets/ui/unlock.png" alt="" aria-hidden="true">
         <h3>Unlock Everything</h3>
         <p>One-time purchase. No subscriptions, no ads, ever.</p>
         <button class="cta-btn" id="btn-unlock">Coming Soon</button>
         <button class="link-btn" id="btn-restore">Restore Purchases</button>
       </div>
       <div class="grown-card">
+        <img class="grown-ico" src="assets/ui/grownups.png" alt="" aria-hidden="true">
         <h3>Child Profile</h3>
         <p id="profile-summary"></p>
         <button class="link-btn" id="btn-reset-profile">Start setup over</button>
       </div>
       <div class="grown-card">
+        <img class="grown-ico" src="assets/ui/sound-on.png" alt="" aria-hidden="true">
         <h3>Sound Effects</h3>
         <p>Cheerful sounds while coloring.</p>
         <button class="cta-btn" id="btn-sound-toggle">Sound: On</button>
       </div>
       <div class="grown-card">
+        <img class="grown-ico" src="assets/ui/lock.png" alt="" aria-hidden="true">
         <h3>Privacy</h3>
         <p class="fine">Coloring Worlds collects no data from children. No accounts, no ads, no tracking. All artwork stays on this device. Profile settings are stored only on this device and never leave it.</p>
       </div>
       <div class="grown-card">
+        <img class="grown-ico" src="assets/ui/star.png" alt="" aria-hidden="true">
         <h3>About</h3>
         <p class="fine">Coloring Worlds v1.0 — a safe, offline coloring book for kids.</p>
       </div>
