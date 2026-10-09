@@ -166,6 +166,9 @@
     if (this.tool === "magic") { this._strokeMagic(p); return; }
     if (this.tool === "glitter") { this._strokeGlitter(p); return; }
     if (this.tool === "sparkle") { this._strokeSparkle(p); return; }
+    if (this.tool === "crayon") { this._strokeCrayon(p); return; }
+    if (this.tool === "pencil") { this._strokeFine(p, Math.max(3, Math.min(11, this.brushSize * 0.2)), 0.92); return; }
+    if (this.tool === "marker") { this._strokeFine(p, this.brushSize * 1.55, 0.88); return; }
     if (this.tool === "eraser") {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
@@ -182,6 +185,93 @@
     ctx.globalCompositeOperation = "source-over";
     this.lastPt = p;
     this.render();
+  };
+
+  /* ---- freehand drawing tools (pencil / marker / crayon) ----
+   * All of them paint onto colorCtx, so undo snapshots, WIP autosave and
+   * the flattened export treat them exactly like fills and brush strokes. */
+
+  /* Thin hard stroke (pencil) or thick smooth stroke (marker). */
+  ColoringEngine.prototype._strokeFine = function (p, width, alpha) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    if (this.lastPt) { ctx.moveTo(this.lastPt.x, this.lastPt.y); }
+    else { ctx.moveTo(p.x, p.y); }
+    ctx.lineTo(p.x + 0.01, p.y + 0.01);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* Crayon: waxy, grainy stroke. A translucent core line plus many small
+   * jittered grain stamps along the segment, so edges look broken and
+   * speckled like real crayon on paper. */
+  ColoringEngine.prototype._strokeCrayon = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var w = this.brushSize;
+    // translucent core (lighter in the middle of the stroke)
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = w * 0.82;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(p.x + 0.01, p.y + 0.01);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // grain stamps
+    ctx.fillStyle = this.color;
+    var steps = Math.max(1, Math.floor(dist / 3.5));
+    for (var i = 0; i <= steps; i++) {
+      var t = steps === 0 ? 0 : i / steps;
+      var cx = from.x + dx * t, cy = from.y + dy * t;
+      var grains = 5;
+      for (var k = 0; k < grains; k++) {
+        var gx = cx + (Math.random() - 0.5) * w * 0.96;
+        var gy = cy + (Math.random() - 0.5) * w * 0.96;
+        var r = 1 + Math.random() * Math.max(1.6, w * 0.1);
+        ctx.globalAlpha = 0.3 + Math.random() * 0.55;
+        ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      // occasional paper-white fleck for the broken-wax look
+      if (Math.random() < 0.5) {
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(cx + (Math.random() - 0.5) * w * 0.7, cy + (Math.random() - 0.5) * w * 0.7,
+          1 + Math.random() * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = this.color;
+      }
+    }
+    ctx.globalAlpha = 1;
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* True when the paint layer has no visible paint (sampled cheaply). */
+  ColoringEngine.prototype.isBlank = function () {
+    if (!this._blankCv) {
+      this._blankCv = document.createElement("canvas");
+      this._blankCv.width = 24; this._blankCv.height = 24;
+    }
+    var c = this._blankCv.getContext("2d");
+    c.globalCompositeOperation = "source-over";
+    c.clearRect(0, 0, 24, 24);
+    c.drawImage(this.colorCanvas, 0, 0, 24, 24);
+    var d = c.getImageData(0, 0, 24, 24).data;
+    for (var i = 3; i < d.length; i += 4) if (d[i] > 12) return false;
+    return true;
   };
 
   /* ---- premium effect brushes (magic / glitter / sparkle) ---- */
@@ -304,6 +394,32 @@
         cd[i] = rgb[0]; cd[i + 1] = rgb[1]; cd[i + 2] = rgb[2]; cd[i + 3] = 255;
       };
     }
+    if (this.fillMode.indexOf("grad-") === 0) {
+      // Magic gradient fills: diagonal multi-stop blend, precomputed per diagonal.
+      var grads = (typeof window !== "undefined" && window.CW_DATA && window.CW_DATA.GRADIENTS) || [];
+      var stops = null;
+      for (var gi = 0; gi < grads.length; gi++) {
+        if (grads[gi].id === this.fillMode) { stops = grads[gi].stops; break; }
+      }
+      if (!stops) return null;
+      var cols = stops.map(hexToRgb);
+      var gdiag = [];
+      var maxD = 2 * (SIZE - 1);
+      for (var gd = 0; gd <= maxD; gd++) {
+        var gt = gd / maxD * (cols.length - 1);
+        var i0 = Math.min(cols.length - 2, Math.floor(gt));
+        var gf = gt - i0, ca = cols[i0], cb = cols[i0 + 1];
+        gdiag.push([
+          Math.round(ca[0] + (cb[0] - ca[0]) * gf),
+          Math.round(ca[1] + (cb[1] - ca[1]) * gf),
+          Math.round(ca[2] + (cb[2] - ca[2]) * gf)
+        ]);
+      }
+      return function (x, y, cd, i) {
+        var rgb = gdiag[x + y];
+        cd[i] = rgb[0]; cd[i + 1] = rgb[1]; cd[i + 2] = rgb[2]; cd[i + 3] = 255;
+      };
+    }
     var data = this._patternData(this.fillMode);
     if (!data) return null;
     return function (x, y, cd, i) {
@@ -339,6 +455,53 @@
       this._sparkleStar(t, 72, 72, 15, "#ffffff");
       this._sparkleStar(t, 72, 24, 9, "#ffffff");
       this._sparkleStar(t, 24, 72, 9, "#ffffff");
+    } else if (mode === "hearts") {
+      var heart = function (cx, cy, s) {
+        t.save(); t.translate(cx, cy); t.scale(s, s);
+        t.beginPath();
+        t.moveTo(0, 10);
+        t.bezierCurveTo(-16, -4, -9, -16, 0, -7);
+        t.bezierCurveTo(9, -16, 16, -4, 0, 10);
+        t.fill(); t.restore();
+      };
+      heart(26, 30, 1.05); heart(74, 78, 1.05);
+      heart(76, 28, 0.62); heart(26, 80, 0.62);
+    } else if (mode === "bubbles") {
+      var bubble = function (cx, cy, r) {
+        t.beginPath(); t.arc(cx, cy, r, 0, Math.PI * 2);
+        t.fillStyle = "rgba(255,255,255,0.28)"; t.fill();
+        t.lineWidth = 3; t.strokeStyle = "#ffffff"; t.stroke();
+        t.beginPath(); t.arc(cx - r * 0.35, cy - r * 0.35, r * 0.22, 0, Math.PI * 2);
+        t.fillStyle = "#ffffff"; t.fill();
+      };
+      bubble(28, 28, 15); bubble(72, 66, 19);
+      bubble(74, 22, 9); bubble(24, 76, 10);
+      t.fillStyle = "#ffffff";
+    } else if (mode === "glitter") {
+      // Base hue + dense sparkle speckles (white / pale gold / light tint
+      // of the base) + a few twinkle stars. Seeded RNG so the tile is
+      // identical every time it is generated for a given hue.
+      var seed = 1234567;
+      var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      var base = hexToRgb(this.color);
+      var tint = [
+        Math.min(255, Math.round(base[0] + (255 - base[0]) * 0.55)),
+        Math.min(255, Math.round(base[1] + (255 - base[1]) * 0.55)),
+        Math.min(255, Math.round(base[2] + (255 - base[2]) * 0.55))
+      ];
+      var speck = ["#ffffff", "#fff3a6", "rgb(" + tint[0] + "," + tint[1] + "," + tint[2] + ")"];
+      for (i = 0; i < 260; i++) {
+        t.fillStyle = speck[(rnd() * 3) | 0];
+        t.globalAlpha = 0.5 + rnd() * 0.5;
+        t.beginPath();
+        t.arc(rnd() * tile, rnd() * tile, 0.8 + rnd() * 1.7, 0, Math.PI * 2);
+        t.fill();
+      }
+      t.globalAlpha = 1;
+      this._sparkleStar(t, 26, 30, 8, "#ffffff");
+      this._sparkleStar(t, 70, 74, 10, "#fff3a6");
+      this._sparkleStar(t, 74, 22, 6, "#ffffff");
+      t.fillStyle = "#ffffff";
     } else {
       return null;
     }
@@ -446,7 +609,7 @@
     this.render();
   };
 
-  ColoringEngine.prototype.setColor = function (hex) { this.color = hex; if (this.tool === "eraser") this.tool = "brush"; };
+  ColoringEngine.prototype.setColor = function (hex) { this.color = hex; if (this.tool === "eraser") this.tool = "marker"; };
   ColoringEngine.prototype.setTool = function (t) { this.tool = t; };
   ColoringEngine.prototype.setFillMode = function (m) { this.fillMode = m || "solid"; };
   ColoringEngine.prototype.setBrushSize = function (px) { this.brushSize = px; };
