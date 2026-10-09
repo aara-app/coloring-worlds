@@ -135,32 +135,26 @@
     <div class="world-hint">Swipe the pictures &#8596; tap one to color it!</div>
   </section>
 
-  <!-- ============ COLORING STUDIO ============ -->
+  <!-- ============ COLORING STUDIO (full-bleed canvas + slim right rail) ============ -->
   <section id="s-color" class="screen">
-    <header class="topbar color-topbar">
-      <button class="icon-btn" id="color-back" aria-label="Back">
-        <img src="assets/ui/back.png" alt="">
-      </button>
-      <div class="topbar-title" id="color-title">Color!</div>
-      <span class="topbar-spacer"></span>
-    </header>
     <div class="studio-row">
       <div class="canvas-wrap" id="canvas-wrap">
         <canvas id="color-canvas"></canvas>
         <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+        <button class="icon-btn canvas-back" id="color-back" aria-label="Back">
+          <img src="assets/ui/back.png" alt="">
+        </button>
+        <span class="canvas-title" id="color-title">Color!</span>
       </div>
       <div class="side-tools" id="side-tools" aria-label="Coloring tools">
         <button class="side-btn" id="tool-done" aria-label="Done">
           <img src="assets/ui/check.png" alt="">
         </button>
-        <button class="side-btn" id="tool-brush" aria-label="Brush">
-          <img src="assets/ui/brush.png" alt="">
+        <button class="side-btn" id="tool-save" aria-label="Save to photos">
+          <img src="assets/ui/gallery.png" alt="">
         </button>
-        <button class="side-btn" id="tool-fill" aria-label="Paint bucket">
-          <img src="assets/ui/bucket.png" alt="">
-        </button>
-        <button class="side-btn" id="tool-fx" aria-label="Magic brushes">
-          <img src="assets/ui/wand.png" alt="">
+        <button class="side-btn tool-current" id="tool-current" aria-label="Choose a tool">
+          <img id="tool-current-img" src="assets/ui/brush.png" alt="">
         </button>
         <button class="side-btn color-dot" id="btn-color" aria-label="Choose color">
           <span class="color-dot-inner" id="color-dot-inner"></span>
@@ -168,6 +162,7 @@
         <button class="side-btn" id="tool-eraser" aria-label="Eraser">
           <img src="assets/ui/eraser.png" alt="">
         </button>
+        <span class="rail-spacer"></span>
         <button class="side-btn" id="tool-undo" aria-label="Undo">
           <img src="assets/ui/undo.png" alt="">
         </button>
@@ -176,24 +171,33 @@
         </button>
       </div>
     </div>
-    <!-- brush size popup -->
-    <div id="size-pop" class="size-pop hidden">
-      <button class="size-btn" data-size="s" aria-label="Small brush"><span class="dot dot-s"></span></button>
-      <button class="size-btn" data-size="m" aria-label="Medium brush"><span class="dot dot-m"></span></button>
-      <button class="size-btn" data-size="l" aria-label="Big brush"><span class="dot dot-l"></span></button>
-    </div>
-    <!-- magic brush effects popup (premium) -->
-    <div id="fx-pop" class="fx-pop hidden"></div>
-    <!-- fill style popup: solid / rainbow / patterns (premium) -->
-    <div id="fill-pop" class="fx-pop fill-pop hidden"></div>
+    <!-- tool picker popup: bucket / crayon / pencil / marker / magic + sizes -->
+    <div id="tools-pop" class="tools-pop hidden"></div>
   </section>
 
-  <!-- ============ COLOR PICKER POPUP ============ -->
+  <!-- ============ COLOR PICKER POPUP (sectioned: solids / magic / glitter / patterns) ============ -->
   <div id="color-modal" class="modal hidden">
     <div class="modal-card color-card">
       <button class="modal-x" id="color-close" aria-label="Close"><img src="assets/ui/close.png" alt=""></button>
       <h2>Pick a color!</h2>
-      <div class="color-grid" id="color-grid"></div>
+      <div class="color-tabs" id="color-tabs">
+        <button class="ctab sel" data-tab="solids">Colors</button>
+        <button class="ctab" data-tab="magic">Magic</button>
+        <button class="ctab" data-tab="glitter">Glitter</button>
+        <button class="ctab" data-tab="patterns">Patterns</button>
+      </div>
+      <div class="color-pane" id="pane-solids">
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+      <div class="color-pane hidden" id="pane-magic">
+        <div class="magic-list" id="magic-list"></div>
+      </div>
+      <div class="color-pane hidden" id="pane-glitter">
+        <div class="color-grid glitter-grid" id="glitter-grid"></div>
+      </div>
+      <div class="color-pane hidden" id="pane-patterns">
+        <div class="pattern-list" id="pattern-list"></div>
+      </div>
       <p class="color-note" id="color-note">More colors with Unlock All!</p>
     </div>
   </div>

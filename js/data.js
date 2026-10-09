@@ -111,10 +111,27 @@
     "#c2185b", "#00acc1", "#6d4c41", "#e6a817",
     "#ff8a80", "#ffd180", "#ffff8d", "#ccff90",
     "#a7ffeb", "#80d8ff", "#8c9eff", "#ea80fc",
-    "#795548", "#607d8b", "#26a69a", "#d4e157"
+    "#795548", "#607d8b", "#26a69a", "#d4e157",
+    "#ef5350", "#ab47bc", "#5c6bc0", "#66bb6a",
+    "#9ccc65", "#ffee58", "#ffa726", "#ff7043",
+    "#8d6e63", "#78909c", "#ec407a", "#29b6f6"
   ];
   /* legacy alias: default color etc. */
   var PALETTE = PALETTE_FREE;
+
+  /* Magic gradient fills (premium): diagonal blends, stops light -> deep */
+  var GRADIENTS = [
+    { id: "grad-sunset", label: "Sunset", stops: ["#ffd93d", "#ff9a3d", "#ff5e78", "#7b2ff7"] },
+    { id: "grad-ocean",  label: "Ocean",  stops: ["#7dffe0", "#00c7be", "#0a84ff", "#3d348b"] },
+    { id: "grad-candy",  label: "Candy",  stops: ["#ffc2e2", "#ff6ec7", "#a06bff", "#4dd0e1"] },
+    { id: "grad-forest", label: "Forest", stops: ["#f4ff81", "#aeea00", "#00c853", "#00695c"] }
+  ];
+  /* Glitter fills (premium): base hue + sparkle speckles + twinkle stars */
+  var GLITTER_HUES = [
+    "#ff3b30", "#ff9500", "#ffcc00", "#34c759",
+    "#00c7be", "#0a84ff", "#bf5af2", "#ff375f",
+    "#ffd93d", "#ff6b9d", "#4dabff", "#3ddc97"
+  ];
 
   function themeById(id) {
     for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
@@ -137,6 +154,7 @@
   window.CW_DATA = {
     THEMES: THEMES, INTERESTS: INTERESTS, PALETTE: PALETTE,
     PALETTE_FREE: PALETTE_FREE, PALETTE_LOCKED: PALETTE_LOCKED,
+    GRADIENTS: GRADIENTS, GLITTER_HUES: GLITTER_HUES,
     themeById: themeById, visibleThemes: visibleThemes
   };
 })();

@@ -444,12 +444,71 @@
   var PALETTE_LOCKED = window.CW_DATA.PALETTE_LOCKED;
   var currentColor = PALETTE_FREE[0];
 
-  function setColorDot(hex) {
+  /* The big color circle on the rail reflects the active paint: solid,
+   * rainbow, a magic gradient, glitter (sparkles over the hue) or a
+   * pattern (white dots over the hue). */
+  function setColorDot() {
     var dot = $("color-dot-inner");
-    if (dot) {
-      dot.style.background = hex;
-      dot.style.borderColor = (hex.toLowerCase() === "#ffffff") ? "#c9c2d4" : "rgba(0,0,0,.12)";
+    if (!dot) return;
+    var hex = currentColor;
+    dot.style.backgroundImage = "none";
+    dot.style.backgroundColor = hex;
+    if (fillModeSel === "rainbow") {
+      dot.style.backgroundColor = "transparent";
+      dot.style.backgroundImage = "linear-gradient(135deg,#ff3b30,#ff9500,#ffcc00,#34c759,#0a84ff,#bf5af2)";
+    } else if (fillModeSel.indexOf("grad-") === 0) {
+      var grads = window.CW_DATA.GRADIENTS || [];
+      for (var i = 0; i < grads.length; i++) {
+        if (grads[i].id === fillModeSel) {
+          dot.style.backgroundColor = "transparent";
+          dot.style.backgroundImage = "linear-gradient(135deg," + grads[i].stops.join(",") + ")";
+          break;
+        }
+      }
+    } else if (fillModeSel === "glitter") {
+      dot.style.backgroundImage =
+        "radial-gradient(circle at 30% 28%, #ffffff 0 3px, transparent 4.5px)," +
+        "radial-gradient(circle at 68% 55%, #fff3a6 0 2.6px, transparent 4px)," +
+        "radial-gradient(circle at 45% 78%, #ffffff 0 2.2px, transparent 3.6px)," +
+        "radial-gradient(circle at 80% 22%, #ffffff 0 2px, transparent 3.4px)";
+    } else if (fillModeSel !== "solid") {
+      dot.style.backgroundImage =
+        "radial-gradient(circle at 32% 32%, rgba(255,255,255,.95) 0 4px, transparent 5.5px)," +
+        "radial-gradient(circle at 70% 68%, rgba(255,255,255,.95) 0 4px, transparent 5.5px)";
     }
+    dot.style.borderColor = (hex.toLowerCase() === "#ffffff" && fillModeSel === "solid") ? "#c9c2d4" : "rgba(0,0,0,.12)";
+  }
+
+  /* ============ palette popup: Solids / Magic / Glitter / Patterns ============ */
+  var colorTab = "solids";
+
+  function closeColorModal() { $("color-modal").classList.add("hidden"); }
+
+  function lockVeil() {
+    var veil = document.createElement("span");
+    veil.className = "lock-veil";
+    veil.innerHTML = LOCK_SVG;
+    return veil;
+  }
+
+  /* Choosing any special paint (magic / glitter / pattern) arms the
+   * bucket with it — one tap on a region fills with the special paint. */
+  function applyFillStyle(mode) {
+    fillModeSel = mode;
+    if (engine) { engine.setFillMode(mode); engine.setTool("fill"); }
+    setToolUI("fill");
+    setColorDot();
+    sfx("colorPick");
+    closeColorModal();
+  }
+
+  function pickSolid(hex) {
+    currentColor = hex;
+    fillModeSel = "solid";
+    if (engine) { engine.setColor(hex); engine.setFillMode("solid"); }
+    setColorDot();
+    sfx("colorPick");
+    closeColorModal();
   }
 
   function buildColorGrid() {
@@ -461,28 +520,109 @@
       b.className = "color-cell" + (locked ? " locked" : "") + (hex.toLowerCase() === "#ffffff" ? " is-white" : "");
       b.style.background = hex;
       b.setAttribute("aria-label", "color " + hex + (locked ? " (locked)" : ""));
-      if (hex === currentColor && !locked) b.classList.add("sel");
-      if (locked) {
-        var veil = document.createElement("span");
-        veil.className = "lock-veil";
-        veil.innerHTML = LOCK_SVG;
-        b.appendChild(veil);
-      }
+      if (hex === currentColor && fillModeSel === "solid" && !locked) b.classList.add("sel");
+      if (locked) b.appendChild(lockVeil());
       b.addEventListener("click", function () {
         if (locked) { sfx("error"); toast("Unlock for more colors!"); return; }
-        currentColor = hex;
-        if (engine) engine.setColor(hex);
-        setColorDot(hex);
-        sfx("colorPick");
-        grid.querySelectorAll(".color-cell").forEach(function (x) { x.classList.remove("sel"); });
-        b.classList.add("sel");
-        $("color-modal").classList.add("hidden");
+        pickSolid(hex);
       });
       grid.appendChild(b);
     }
     PALETTE_FREE.forEach(function (hex) { cell(hex, false); });
     PALETTE_LOCKED.forEach(function (hex) { cell(hex, !unlocked); });
-    $("color-note").textContent = unlocked ? "All colors unlocked!" : "More colors with Unlock All!";
+  }
+
+  function buildMagicList() {
+    var list = $("magic-list");
+    list.innerHTML = "";
+    var unlocked = isUnlocked();
+    function sw(id, label, bg) {
+      var b = document.createElement("button");
+      b.className = "magic-sw" + (fillModeSel === id ? " sel" : "");
+      b.innerHTML = '<span class="magic-chip" style="background:' + bg + '"></span><span class="magic-label">' + label + "</span>";
+      if (!unlocked) b.appendChild(lockVeil());
+      b.addEventListener("click", function () {
+        if (!unlocked) { sfx("error"); toast("Unlock for magic colors!"); return; }
+        applyFillStyle(id);
+      });
+      list.appendChild(b);
+    }
+    sw("rainbow", "Rainbow", "linear-gradient(90deg,#ff3b30,#ff9500,#ffcc00,#34c759,#0a84ff,#bf5af2)");
+    window.CW_DATA.GRADIENTS.forEach(function (g) {
+      sw(g.id, g.label, "linear-gradient(90deg," + g.stops.join(",") + ")");
+    });
+  }
+
+  function buildGlitterGrid() {
+    var grid = $("glitter-grid");
+    grid.innerHTML = "";
+    var unlocked = isUnlocked();
+    window.CW_DATA.GLITTER_HUES.forEach(function (hex) {
+      var b = document.createElement("button");
+      b.className = "color-cell glitter-cell" + (!unlocked ? " locked" : "");
+      b.style.backgroundColor = hex;
+      b.setAttribute("aria-label", "glitter " + hex);
+      if (fillModeSel === "glitter" && currentColor === hex && unlocked) b.classList.add("sel");
+      if (!unlocked) b.appendChild(lockVeil());
+      b.addEventListener("click", function () {
+        if (!unlocked) { sfx("error"); toast("Unlock for glitter colors!"); return; }
+        currentColor = hex;
+        if (engine) engine.setColor(hex);
+        applyFillStyle("glitter");
+      });
+      grid.appendChild(b);
+    });
+  }
+
+  var PATTERN_DEFS = [
+    { id: "dots", label: "Dots", icon: "assets/ui/fx-dots.png" },
+    { id: "stars", label: "Stars", icon: "assets/ui/star.png" },
+    { id: "stripes", label: "Stripes", icon: "assets/ui/fx-stripes.png" },
+    { id: "hearts", label: "Hearts", icon: "assets/ui/fx-heart.png" },
+    { id: "bubbles", label: "Bubbles", icon: "assets/ui/fx-droplet.png" }
+  ];
+  function buildPatternList() {
+    var list = $("pattern-list");
+    list.innerHTML = "";
+    var unlocked = isUnlocked();
+    PATTERN_DEFS.forEach(function (pd) {
+      var b = document.createElement("button");
+      b.className = "magic-sw pattern-sw" + (fillModeSel === pd.id ? " sel" : "");
+      b.innerHTML = '<span class="pattern-chip" style="background:' + currentColor + '">' +
+        '<img src="' + pd.icon + '" alt=""></span><span class="magic-label">' + pd.label + "</span>";
+      if (!unlocked) b.appendChild(lockVeil());
+      b.addEventListener("click", function () {
+        if (!unlocked) { sfx("error"); toast("Unlock for pattern fills!"); return; }
+        applyFillStyle(pd.id);
+      });
+      list.appendChild(b);
+    });
+  }
+
+  function updateColorNote() {
+    var unlocked = isUnlocked();
+    var notes = {
+      solids: unlocked ? "All colors unlocked!" : "More colors with Unlock All!",
+      magic: unlocked ? "Tap a picture part to fill it with magic!" : "Magic colors with Unlock All!",
+      glitter: unlocked ? "Tap a picture part to fill it with glitter!" : "Glitter colors with Unlock All!",
+      patterns: unlocked ? "Patterns paint in your picked color!" : "Pattern fills with Unlock All!"
+    };
+    $("color-note").textContent = notes[colorTab] || "";
+  }
+
+  function showColorTab(tab) {
+    colorTab = tab;
+    document.querySelectorAll("#color-tabs .ctab").forEach(function (b) {
+      b.classList.toggle("sel", b.getAttribute("data-tab") === tab);
+    });
+    ["solids", "magic", "glitter", "patterns"].forEach(function (t) {
+      $("pane-" + t).classList.toggle("hidden", t !== tab);
+    });
+    if (tab === "solids") buildColorGrid();
+    else if (tab === "magic") buildMagicList();
+    else if (tab === "glitter") buildGlitterGrid();
+    else if (tab === "patterns") buildPatternList();
+    updateColorNote();
   }
 
   function fitCanvas() {
@@ -497,94 +637,92 @@
   window.addEventListener("resize", fitCanvas);
   window.addEventListener("orientationchange", function () { setTimeout(fitCanvas, 300); });
 
+  /* ============ tools: one big rail button + tool picker popup ============ */
+  var TOOL_DEFS = [
+    { id: "fill", label: "Bucket", icon: "assets/ui/bucket.png" },
+    { id: "crayon", label: "Crayon", icon: "assets/ui/crayon.png" },
+    { id: "pencil", label: "Pencil", icon: "assets/ui/pencil.png" },
+    { id: "marker", label: "Marker", icon: "assets/ui/brush.png" },
+    { id: "magic", label: "Magic", icon: "assets/ui/wand.png", premium: true },
+    { id: "glitter", label: "Glitter", icon: "assets/ui/fx-glitter.png", premium: true },
+    { id: "sparkle", label: "Sparkles", icon: "assets/ui/fx-sparkle.png", premium: true },
+    { id: "eraser", label: "Eraser", icon: "assets/ui/eraser.png" }
+  ];
+  function toolIcon(id) {
+    for (var i = 0; i < TOOL_DEFS.length; i++) if (TOOL_DEFS[i].id === id) return TOOL_DEFS[i].icon;
+    return "assets/ui/brush.png";
+  }
+
+  /* The rail's big tool button always shows the current tool's icon. */
   function setToolUI(name) {
-    ["brush", "fill", "eraser"].forEach(function (t) {
-      var el = $("tool-" + t);
-      if (el) el.classList.toggle("sel", t === name);
-    });
-    var fx = $("tool-fx");
-    if (fx) fx.classList.toggle("sel", name === "magic" || name === "glitter" || name === "sparkle");
+    var img = $("tool-current-img");
+    if (img) img.src = toolIcon(name);
+    var er = $("tool-eraser");
+    if (er) er.classList.toggle("sel", name === "eraser");
+    var tc = $("tool-current");
+    if (tc) tc.classList.toggle("sel", name !== "eraser");
   }
 
-  /* ---- premium magic brush effects popup ---- */
-  var FX_TOOLS = [
-    { id: "magic", label: "Magic",
-      cls: "fx-magic",
-      svg: '<img src="assets/ui/wand.png" alt="">' },
-    { id: "glitter", label: "Glitter",
-      cls: "fx-glitter",
-      svg: '<img src="assets/ui/fx-glitter.png" alt="">' },
-    { id: "sparkle", label: "Sparkle",
-      cls: "fx-sparkle",
-      svg: '<img src="assets/ui/fx-sparkle.png" alt="">' }
-  ];
-  function toggleFxPop(force) {
-    var pop = $("fx-pop");
-    var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
-    if (showIt) buildFxPop();
-    pop.classList.toggle("hidden", !showIt);
-  }
-  function buildFxPop() {
-    var pop = $("fx-pop");
-    pop.innerHTML = "";
-    var unlocked = isUnlocked();
-    var activeTool = engine ? engine.tool : null;
-    FX_TOOLS.forEach(function (fx) {
-      var b = document.createElement("button");
-      b.className = "fx-btn " + fx.cls + ((activeTool === fx.id) ? " sel" : "");
-      b.innerHTML = '<span class="fx-ico">' + fx.svg + "</span><span>" + fx.label + "</span>" +
-        (unlocked ? "" : '<span class="fx-lock">' + LOCK_SVG + "</span>");
-      b.addEventListener("click", function () {
-        if (!unlocked) { sfx("error"); toast("Unlock for magic brushes!"); return; }
-        if (engine) engine.setTool(fx.id);
-        setToolUI(fx.id);
-        sfx("select");
-        toggleSizePop(false);
-        toggleFxPop(false);
-      });
-      pop.appendChild(b);
-    });
+  function pickTool(id) {
+    if (engine) engine.setTool(id);
+    setToolUI(id);
+    sfx("select");
   }
 
-  /* ---- fill styles popup: solid free; rainbow + patterns premium ---- */
-  var FILL_STYLES = [
-    { id: "solid", label: "Solid", cls: "fill-solid",
-      svg: '<img src="assets/ui/fx-droplet.png" alt="">' },
-    { id: "rainbow", label: "Rainbow", cls: "fill-rainbow",
-      svg: '<img src="assets/ui/fx-rainbow.png" alt="">' },
-    { id: "dots", label: "Dots", cls: "fill-dots",
-      svg: '<img src="assets/ui/fx-dots.png" alt="">' },
-    { id: "stars", label: "Stars", cls: "fill-stars",
-      svg: '<img src="assets/ui/star.png" alt="">' },
-    { id: "stripes", label: "Stripes", cls: "fill-stripes",
-      svg: '<img src="assets/ui/fx-stripes.png" alt="">' }
-  ];
-  function toggleFillPop(force) {
-    var pop = $("fill-pop");
+  function toggleToolsPop(force) {
+    var pop = $("tools-pop");
     if (!pop) return;
     var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
-    if (showIt) buildFillPop();
+    if (showIt) buildToolsPop();
     pop.classList.toggle("hidden", !showIt);
   }
-  function buildFillPop() {
-    var pop = $("fill-pop");
+  function buildToolsPop() {
+    var pop = $("tools-pop");
     pop.innerHTML = "";
     var unlocked = isUnlocked();
-    FILL_STYLES.forEach(function (fs) {
-      var premium = fs.id !== "solid";
+    var grid = document.createElement("div");
+    grid.className = "tools-grid";
+    TOOL_DEFS.forEach(function (td) {
       var b = document.createElement("button");
-      b.className = "fx-btn " + fs.cls + (fillModeSel === fs.id ? " sel" : "");
-      b.innerHTML = '<span class="fx-ico">' + fs.svg + "</span><span>" + fs.label + "</span>" +
-        (premium && !unlocked ? '<span class="fx-lock">' + LOCK_SVG + "</span>" : "");
+      b.className = "tool-btn" + (engine && engine.tool === td.id ? " sel" : "");
+      b.innerHTML = '<span class="tool-ico"><img src="' + td.icon + '" alt=""></span><span>' + td.label + "</span>" +
+        (td.premium && !unlocked ? '<span class="fx-lock">' + LOCK_SVG + "</span>" : "");
       b.addEventListener("click", function () {
-        if (premium && !unlocked) { sfx("error"); toast("Unlock for rainbow & pattern fills!"); return; }
-        fillModeSel = fs.id;
-        if (engine) engine.setFillMode(fillModeSel);
-        sfx("select");
-        toggleFillPop(false);
+        if (td.premium && !unlocked) { sfx("error"); toast("Unlock for magic tools!"); return; }
+        pickTool(td.id);
+        toggleToolsPop(false);
       });
-      pop.appendChild(b);
+      grid.appendChild(b);
     });
+    pop.appendChild(grid);
+    var sizes = document.createElement("div");
+    sizes.className = "tools-sizes";
+    var lab = document.createElement("span");
+    lab.className = "tools-sizes-label";
+    lab.textContent = "Size";
+    sizes.appendChild(lab);
+    [["s", "dot-s"], ["m", "dot-m"], ["l", "dot-l"]].forEach(function (sz) {
+      var b = document.createElement("button");
+      b.className = "size-btn" + (engine && BRUSH_PX[sz[0]] === engine.brushSize ? " sel" : "");
+      b.setAttribute("aria-label", "Brush size " + sz[0]);
+      b.innerHTML = '<span class="dot ' + sz[1] + '"></span>';
+      b.addEventListener("click", function () {
+        if (engine) engine.setBrushSize(BRUSH_PX[sz[0]]);
+        sizes.querySelectorAll(".size-btn").forEach(function (x) { x.classList.remove("sel"); });
+        b.classList.add("sel");
+        sfx("tap");
+      });
+      sizes.appendChild(b);
+    });
+    pop.appendChild(sizes);
+  }
+
+  /* Undo / Clear sit at the rail bottom, dimmed when they can't do anything. */
+  function refreshRail() {
+    if (!engine) return;
+    var undoBtn = $("tool-undo"), clearBtn = $("tool-clear");
+    if (undoBtn) undoBtn.classList.toggle("dim", !(engine.undoStack && engine.undoStack.length));
+    if (clearBtn) clearBtn.classList.toggle("dim", engine.isBlank());
   }
 
   /* ---- sparkle burst where a fill lands (DOM particles over canvas) ---- */
@@ -636,17 +774,6 @@
     }
   }
 
-  function toggleSizePop(force) {
-    var pop = $("size-pop");
-    var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
-    pop.classList.toggle("hidden", !showIt);
-    if (showIt) {
-      pop.querySelectorAll(".size-btn").forEach(function (b) {
-        b.classList.toggle("sel", BRUSH_PX[b.getAttribute("data-size")] === (engine ? engine.brushSize : 26));
-      });
-    }
-  }
-
   function openColor(page) {
     // page may be null => free draw
     currentPage = page || null;
@@ -663,33 +790,34 @@
     if (!engine) {
       engine = new window.CW_COLOR.ColoringEngine(cv, {
         tapMode: tapMode,
-        defaultTool: tapMode ? "fill" : "brush",
+        defaultTool: tapMode ? "fill" : "marker",
         defaultColor: currentColor,
         defaultBrush: tapMode ? 40 : 26,
-        onChange: scheduleWipSave,
+        onChange: function () { scheduleWipSave(); refreshRail(); },
         onFill: function (x, y) { sparkleBurst(x, y); }
       });
     } else {
       engine.reset({
         tapMode: tapMode,
-        defaultTool: tapMode ? "fill" : "brush",
+        defaultTool: tapMode ? "fill" : "marker",
         defaultColor: currentColor,
         defaultBrush: tapMode ? 40 : 26
       });
     }
     engine.setFillMode(fillModeSel);
-    buildColorGrid();
-    setColorDot(currentColor);
-    setToolUI(tapMode ? "fill" : "brush");
-    toggleSizePop(false);
-    toggleFxPop(false);
-    toggleFillPop(false);
+    setColorDot();
+    setToolUI(tapMode ? "fill" : "marker");
+    toggleToolsPop(false);
+    refreshRail();
 
-    // age-adaptive toolbar: toddlers only get tap-to-fill
-    var brushBtn = $("tool-brush");
-    if (brushBtn) brushBtn.style.display = tapMode ? "none" : "";
-    var fxBtn = $("tool-fx");
-    if (fxBtn) fxBtn.style.display = tapMode ? "none" : "";
+    // age-adaptive toolbar: toddlers only get tap-to-fill solids —
+    // no tool picker, no eraser, no magic/glitter/pattern tabs.
+    var toolsBtn = $("tool-current");
+    if (toolsBtn) toolsBtn.style.display = tapMode ? "none" : "";
+    var eraserBtn = $("tool-eraser");
+    if (eraserBtn) eraserBtn.style.display = tapMode ? "none" : "";
+    var tabs = $("color-tabs");
+    if (tabs) tabs.style.display = tapMode ? "none" : "";
 
     // WIP key for autosave: unique per page + art tier variant
     var tierSuffix = ageTier() === "simple" ? ":toddler" : ageTier() === "detail" ? ":detail" : "";
@@ -713,6 +841,7 @@
         engine.blank();
         restoreWip();
       }
+      setTimeout(refreshRail, 500); // after any restored WIP has landed
     });
   }
 
@@ -755,42 +884,21 @@
   }
 
   function initStudio() {
-    $("tool-brush").addEventListener("click", function () {
-      if (engine && engine.tool === "brush") { toggleSizePop(); return; } // tap again => sizes
-      if (engine) engine.setTool("brush");
-      setToolUI("brush");
+    $("tool-current").addEventListener("click", function () {
       sfx("tap");
-      toggleSizePop(false);
-      toggleFxPop(false);
-      toggleFillPop(false);
-    });
-    $("tool-fill").addEventListener("click", function () {
-      if (engine && engine.tool === "fill" && !studioTapMode) { toggleFillPop(); return; } // tap again => fill styles
-      if (engine) engine.setTool("fill");
-      setToolUI("fill");
-      sfx("tap");
-      toggleSizePop(false);
-      toggleFxPop(false);
-      toggleFillPop(false);
+      toggleToolsPop();
     });
     $("tool-eraser").addEventListener("click", function () {
-      if (engine) engine.setTool("eraser");
-      setToolUI("eraser");
-      sfx("tap");
-      toggleSizePop(false);
-      toggleFxPop(false);
-      toggleFillPop(false);
-    });
-    $("tool-fx").addEventListener("click", function () {
-      sfx("tap");
-      toggleSizePop(false);
-      toggleFillPop(false);
-      toggleFxPop();
+      pickTool("eraser");
+      toggleToolsPop(false);
     });
     $("btn-color").addEventListener("click", function () {
       sfx("tap");
-      buildColorGrid();
+      showColorTab(studioTapMode ? "solids" : colorTab);
       $("color-modal").classList.remove("hidden");
+    });
+    document.querySelectorAll("#color-tabs .ctab").forEach(function (b) {
+      b.addEventListener("click", function () { sfx("tap"); showColorTab(b.getAttribute("data-tab")); });
     });
     $("color-close").addEventListener("click", function () { $("color-modal").classList.add("hidden"); });
     $("color-modal").addEventListener("click", function (e) {
@@ -798,37 +906,24 @@
     });
     $("tool-undo").addEventListener("click", function () {
       if (engine && engine.undo()) { sfx("undo"); } else { toast("Nothing to undo"); }
+      setTimeout(refreshRail, 120);
     });
     $("tool-clear").addEventListener("click", function () {
-      if (engine) { engine.clear(true); clearWip(); toast("Cleared!"); }
+      if (engine) { engine.clear(true); clearWip(); toast("Cleared!"); refreshRail(); }
     });
     $("tool-done").addEventListener("click", doneAndSave);
-    document.querySelectorAll("#size-pop .size-btn").forEach(function (b) {
-      b.addEventListener("click", function () {
-        document.querySelectorAll("#size-pop .size-btn").forEach(function (x) { x.classList.remove("sel"); });
-        b.classList.add("sel");
-        if (engine) engine.setBrushSize(BRUSH_PX[b.getAttribute("data-size")] || 26);
-        toggleSizePop(false);
-      });
-    });
-    // tap outside the popups closes them
-    document.addEventListener("pointerdown", function (e) {
-      var pop = $("size-pop");
-      if (!pop.classList.contains("hidden") &&
-          !pop.contains(e.target) && e.target.closest("#tool-brush") === null) {
-        toggleSizePop(false);
+    $("tool-save").addEventListener("click", saveOnly);
+    // tap outside the tool picker closes it (pointerdown for touch,
+    // mousedown as a fallback for webviews that only send mouse events)
+    function dismissToolsPop(e) {
+      var pop = $("tools-pop");
+      if (pop && !pop.classList.contains("hidden") && e.target && e.target.closest &&
+          !pop.contains(e.target) && e.target.closest("#tool-current") === null) {
+        toggleToolsPop(false);
       }
-      var fx = $("fx-pop");
-      if (!fx.classList.contains("hidden") &&
-          !fx.contains(e.target) && e.target.closest("#tool-fx") === null) {
-        toggleFxPop(false);
-      }
-      var fp = $("fill-pop");
-      if (fp && !fp.classList.contains("hidden") &&
-          !fp.contains(e.target) && e.target.closest("#tool-fill") === null) {
-        toggleFillPop(false);
-      }
-    });
+    }
+    document.addEventListener("pointerdown", dismissToolsPop);
+    document.addEventListener("mousedown", dismissToolsPop);
     $("color-back").addEventListener("click", function () { show("s-pages"); });
     $("pages-back").addEventListener("click", function () { enterHome(); });
   }
@@ -841,6 +936,15 @@
    * No share sheet, no confirmation dialog. A confetti celebration plays,
    * and the finished picture becomes a passenger in its world's cart. */
   var saving = false;
+  /* Save button: snapshot to the photo gallery, stay in the studio. */
+  function saveOnly() {
+    if (saving || !engine) return;
+    saving = true;
+    saveToGallery().then(
+      function () { sfx("fanfare"); toast("Saved to photos!"); saving = false; },
+      function () { toast("Couldn't save this time"); saving = false; }
+    );
+  }
   function backToPicker() {
     if (currentTheme) openTheme(currentTheme.id); // rebuild: colored thumb + star
     else enterHome();
