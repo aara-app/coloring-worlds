@@ -16,9 +16,11 @@
    * colorImg: {width,height,data} Uint8ClampedArray — mutated in place.
    * lineImg:  {width,height,data} — barrier map (dark = outline).
    * Fills the connected non-barrier region containing (sx,sy) with (r,g,b,255).
+   * Optional painter(x, y, data, idx): per-pixel override (rainbow / patterns);
+   * when given, it replaces the solid (r,g,b) write and must set alpha too.
    * Returns number of pixels filled (0 = tap was on an outline / outside).
    */
-  function floodFillRegion(colorImg, lineImg, sx, sy, r, g, b) {
+  function floodFillRegion(colorImg, lineImg, sx, sy, r, g, b, painter) {
     var w = colorImg.width, h = colorImg.height;
     if (w !== lineImg.width || h !== lineImg.height) return 0;
     sx |= 0; sy |= 0;
@@ -38,6 +40,7 @@
     }
     function paint(x, y) {
       var i = (y * w + x) * 4;
+      if (painter) { painter(x, y, cd, i); return; }
       cd[i] = r; cd[i + 1] = g; cd[i + 2] = b; cd[i + 3] = 255;
     }
 
@@ -73,6 +76,18 @@
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 
+  /* h: 0..360, s/l: 0..100 -> [r,g,b] 0..255 */
+  function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360 / 360;
+    s /= 100; l /= 100;
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h * 6) % 2 - 1));
+    var m = l - c / 2;
+    var rgb = h < 1 / 6 ? [c, x, 0] : h < 2 / 6 ? [x, c, 0] : h < 3 / 6 ? [0, c, x]
+      : h < 4 / 6 ? [0, x, c] : h < 5 / 6 ? [x, 0, c] : [c, 0, x];
+    return [Math.round((rgb[0] + m) * 255), Math.round((rgb[1] + m) * 255), Math.round((rgb[2] + m) * 255)];
+  }
+
   /* ---------------- Canvas wrapper (browser only) ---------------- */
   function ColoringEngine(canvas, opts) {
     opts = opts || {};
@@ -82,6 +97,9 @@
     this.color = opts.defaultColor || "#ff3b30";
     this.brushSize = opts.defaultBrush || 26;
     this.onChange = opts.onChange || function () {};
+    this.onFill = opts.onFill || function () {}; // (x, y) after a successful fill — for sparkle bursts
+    this.fillMode = "solid"; // solid | rainbow | dots | stars | stripes
+    this._patternCache = {}; // fillMode+color -> full-frame ImageData.data
     this.tapMode = !!opts.tapMode; // 0-2: everything is tap-to-fill
 
     canvas.width = SIZE; canvas.height = SIZE;
@@ -258,18 +276,82 @@
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = this.color;
       ctx.beginPath(); ctx.arc(x, y, this.brushSize * 1.4, 0, Math.PI * 2); ctx.fill();
-      this.render(); this.onChange();
+      this.render(); this.onChange(); this.onFill(x, y);
       return;
     }
     var colorImg = this.colorCtx.getImageData(0, 0, SIZE, SIZE);
     var rgb = hexToRgb(this.color);
-    var n = floodFillRegion(colorImg, this.lineImageData, x | 0, y | 0, rgb[0], rgb[1], rgb[2]);
+    var painter = this.fillMode !== "solid" ? this._makePainter() : null;
+    var n = floodFillRegion(colorImg, this.lineImageData, x | 0, y | 0, rgb[0], rgb[1], rgb[2], painter);
     if (n > 0) {
       this.pushUndo();
       this.colorCtx.putImageData(colorImg, 0, 0);
-      this.render(); this.onChange();
+      this.render(); this.onChange(); this.onFill(x, y);
       try { if (window.CW_SFX) window.CW_SFX.pop(); } catch (e) {}
     }
+  };
+
+  /* Build the per-pixel painter for the current fillMode.
+   * Rainbow: diagonal hue bands (precomputed per x+y diagonal for speed).
+   * Patterns: current color as the base with white shapes, tiled full-frame
+   * into a cached ImageData the painter copies from. Null if unavailable. */
+  ColoringEngine.prototype._makePainter = function () {
+    if (this.fillMode === "rainbow") {
+      var diag = [];
+      for (var d = 0; d <= 2 * (SIZE - 1); d++) diag.push(hslToRgb(d * 0.32, 92, 60));
+      return function (x, y, cd, i) {
+        var rgb = diag[x + y];
+        cd[i] = rgb[0]; cd[i + 1] = rgb[1]; cd[i + 2] = rgb[2]; cd[i + 3] = 255;
+      };
+    }
+    var data = this._patternData(this.fillMode);
+    if (!data) return null;
+    return function (x, y, cd, i) {
+      cd[i] = data[i]; cd[i + 1] = data[i + 1]; cd[i + 2] = data[i + 2]; cd[i + 3] = 255;
+    };
+  };
+
+  /* Full-frame (SIZE x SIZE) pattern pixels for a pattern fill mode,
+   * drawn once per (mode, color) and cached (max 4 entries). */
+  ColoringEngine.prototype._patternData = function (mode) {
+    var key = mode + ":" + this.color;
+    if (this._patternCache[key]) return this._patternCache[key];
+    var tile = 96;
+    var tc = document.createElement("canvas");
+    tc.width = tile; tc.height = tile;
+    var t = tc.getContext("2d");
+    t.fillStyle = this.color;
+    t.fillRect(0, 0, tile, tile);
+    t.fillStyle = "#ffffff";
+    var i, j;
+    if (mode === "dots") {
+      for (i = 0; i < 2; i++) for (j = 0; j < 2; j++) {
+        t.beginPath(); t.arc(i * 48 + 24, j * 48 + 24, 10, 0, Math.PI * 2); t.fill();
+        t.beginPath(); t.arc(i * 48, j * 48, 10, 0, Math.PI * 2); t.fill();
+      }
+    } else if (mode === "stripes") {
+      t.save();
+      t.translate(tile / 2, tile / 2); t.rotate(Math.PI / 4); t.translate(-tile, -tile);
+      for (i = 0; i < 6; i++) t.fillRect(0, i * 32, tile * 2, 13);
+      t.restore();
+    } else if (mode === "stars") {
+      this._sparkleStar(t, 24, 24, 15, "#ffffff");
+      this._sparkleStar(t, 72, 72, 15, "#ffffff");
+      this._sparkleStar(t, 72, 24, 9, "#ffffff");
+      this._sparkleStar(t, 24, 72, 9, "#ffffff");
+    } else {
+      return null;
+    }
+    var full = document.createElement("canvas");
+    full.width = SIZE; full.height = SIZE;
+    var f = full.getContext("2d");
+    f.fillStyle = f.createPattern(tc, "repeat");
+    f.fillRect(0, 0, SIZE, SIZE);
+    var data = f.getImageData(0, 0, SIZE, SIZE).data;
+    var keys = Object.keys(this._patternCache);
+    if (keys.length >= 4) delete this._patternCache[keys[0]];
+    this._patternCache[key] = data;
+    return data;
   };
 
   ColoringEngine.prototype.render = function () {
@@ -350,6 +432,7 @@
     this.tool = opts.defaultTool || "brush";
     this.color = opts.defaultColor || "#ff3b30";
     this.brushSize = opts.defaultBrush || 26;
+    this.fillMode = "solid";
     this.tapMode = !!opts.tapMode;
     this.drawing = false;
     this.lastPt = null;
@@ -365,6 +448,7 @@
 
   ColoringEngine.prototype.setColor = function (hex) { this.color = hex; if (this.tool === "eraser") this.tool = "brush"; };
   ColoringEngine.prototype.setTool = function (t) { this.tool = t; };
+  ColoringEngine.prototype.setFillMode = function (m) { this.fillMode = m || "solid"; };
   ColoringEngine.prototype.setBrushSize = function (px) { this.brushSize = px; };
 
   /* Export a finished picture: white bg + paint + lines, flattened. */
@@ -400,6 +484,7 @@
     SIZE: SIZE,
     floodFillRegion: floodFillRegion,
     hexToRgb: hexToRgb,
+    hslToRgb: hslToRgb,
     ColoringEngine: ColoringEngine
   };
   if (typeof window !== "undefined") window.CW_COLOR = api;

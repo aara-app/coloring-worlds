@@ -90,7 +90,19 @@
         <span>Unlock all</span>
       </button>
     </header>
-    <div class="theme-grid" id="theme-grid"></div>
+    <div class="train-scene" id="train-scene" aria-label="Coloring train — pick a world">
+      <div class="ts-sun" aria-hidden="true"></div>
+      <div class="ts-layer ts-clouds" id="ts-clouds" aria-hidden="true"></div>
+      <div class="ts-layer ts-hills" id="ts-hills" aria-hidden="true"></div>
+      <div class="train-viewport" id="train-viewport">
+        <div class="train-line">
+          <div class="train" id="train"></div>
+          <div class="ts-track" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="puff-layer" id="puff-layer" aria-hidden="true"></div>
+      <div class="train-hint" id="train-hint">Drag the train &#8596; tap a cart!</div>
+    </div>
     <footer class="home-footer">
       <button id="btn-freedraw" class="cta-btn secondary">Free Draw</button>
       <div class="home-links">
@@ -103,17 +115,20 @@
     </footer>
   </section>
 
-  <!-- ============ PAGE PICKER (horizontal carousel) ============ -->
-  <section id="s-pages" class="screen">
-    <header class="topbar">
-      <button class="icon-btn" id="pages-back" aria-label="Back">
+  <!-- ============ WORLD SCREEN (picture picker, two rows) ============ -->
+  <section id="s-pages" class="screen world-screen">
+    <header class="topbar world-topbar">
+      <button class="icon-btn" id="pages-back" aria-label="Back to the train">
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
       </button>
-      <div class="topbar-title" id="pages-title">Pages</div>
+      <div class="world-title" id="pages-title">Pages</div>
       <span class="topbar-spacer"></span>
     </header>
-    <div class="carousel-hint" id="carousel-hint">Swipe to see more &#8594;</div>
-    <div class="page-carousel" id="page-grid"></div>
+    <div class="world-rows">
+      <div class="world-row" id="page-row-1"></div>
+      <div class="world-row" id="page-row-2"></div>
+    </div>
+    <div class="world-hint">Swipe the pictures &#8596; tap one to color it!</div>
   </section>
 
   <!-- ============ COLORING STUDIO ============ -->
@@ -128,6 +143,7 @@
     <div class="studio-row">
       <div class="canvas-wrap" id="canvas-wrap">
         <canvas id="color-canvas"></canvas>
+        <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
       </div>
       <div class="side-tools" id="side-tools" aria-label="Coloring tools">
         <button class="side-btn" id="tool-done" aria-label="Done">
@@ -164,6 +180,8 @@
     </div>
     <!-- magic brush effects popup (premium) -->
     <div id="fx-pop" class="fx-pop hidden"></div>
+    <!-- fill style popup: solid / rainbow / patterns (premium) -->
+    <div id="fill-pop" class="fx-pop fill-pop hidden"></div>
   </section>
 
   <!-- ============ COLOR PICKER POPUP ============ -->
@@ -237,6 +255,7 @@
     </div>
   </section>
 
+  <div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
   <div id="toast" class="toast hidden"></div>
 </div>
 <script src="js/data.js"></script>
