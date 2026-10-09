@@ -1,4 +1,4 @@
-/* Coloring Worlds — theme & page manifest (v1: 6 themes, 40 pages) */
+/* Coloring Worlds — theme & page manifest (v1: 6 themes, 60 pages, 3 age tiers each) */
 (function () {
   "use strict";
 
@@ -10,7 +10,10 @@
       thumb: "assets/pages/" + theme + "/" + id + "-thumb.png",
       // ultra-simple bold versions for age 0-2
       sfile: "assets/pages/" + theme + "/simple-" + id + ".png",
-      sthumb: "assets/pages/" + theme + "/simple-" + id + "-thumb.png"
+      sthumb: "assets/pages/" + theme + "/simple-" + id + "-thumb.png",
+      // richly detailed versions for age 6-8
+      dfile: "assets/pages/" + theme + "/detail-" + id + ".png",
+      dthumb: "assets/pages/" + theme + "/detail-" + id + "-thumb.png"
     };
   }
 
@@ -36,11 +39,11 @@
     { id: "princess",    title: "Princess Castle",  genders: ["girl"], free: false, iconPage: "princess",
       gradient: "linear-gradient(160deg,#ff9ecf 0%,#f0569d 100%)",
       pages: [
-        pg("princess", "princess", "Princess"), pg("princess", "castle", "Castle"),
-        pg("princess", "crown", "Crown"), pg("princess", "ballgown", "Ball Gown"),
-        pg("princess", "carriage", "Carriage"), pg("princess", "tiara", "Tiara"),
-        pg("princess", "magicwand", "Magic Wand"), pg("princess", "throne", "Throne"),
-        pg("princess", "prince", "Prince"), pg("princess", "royalgarden", "Royal Garden")
+        pg("princess", "princess", "Princess"), pg("princess", "gardenprincess", "Garden Princess"),
+        pg("princess", "dancingprincess", "Dancing Princess"), pg("princess", "ponyprincess", "Princess & Pony"),
+        pg("princess", "teaparty", "Tea Party"), pg("princess", "readingprincess", "Story Time"),
+        pg("princess", "balconyprincess", "Castle Balcony"), pg("princess", "birthdayprincess", "Birthday Princess"),
+        pg("princess", "butterflyprincess", "Butterfly Friends"), pg("princess", "bedtimeprincess", "Bedtime Princess")
       ] },
     { id: "baby",        title: "Baby Animals",     genders: ["girl"], free: false, iconPage: "puppy",
       gradient: "linear-gradient(160deg,#c9a7f5 0%,#8b5cf0 100%)",

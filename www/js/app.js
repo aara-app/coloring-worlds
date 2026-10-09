@@ -112,13 +112,32 @@
 
   /* ================= home / themes ================= */
   function isToddler() { return profile && profile.age === "0-2"; }
+  /* Age band selects the art tier: 0-2 simple, 3-5 regular, 6-8 detail */
+  function ageTier() {
+    if (!profile) return "regular";
+    if (profile.age === "0-2") return "simple";
+    if (profile.age === "6-8") return "detail";
+    return "regular";
+  }
+  function tierThumb(p) {
+    var t = ageTier();
+    if (t === "simple" && p.sthumb) return p.sthumb;
+    if (t === "detail" && p.dthumb) return p.dthumb;
+    return p.thumb;
+  }
+  function tierFile(p) {
+    var t = ageTier();
+    if (t === "simple" && p.sfile) return p.sfile;
+    if (t === "detail" && p.dfile) return p.dfile;
+    return p.file;
+  }
   function themeIcon(theme) {
     var p = theme.pages[0];
     for (var i = 0; i < theme.pages.length; i++) {
       if (theme.pages[i].id === theme.iconPage) { p = theme.pages[i]; break; }
     }
-    // 0-2 kids see the simple bold thumbnails everywhere
-    return (isToddler() && p.sthumb) ? p.sthumb : p.thumb;
+    // kids see thumbnails for their age tier everywhere
+    return tierThumb(p);
   }
   function enterHome() {
     var grid = $("theme-grid");
@@ -154,7 +173,7 @@
       card.className = "page-card";
       card.setAttribute("aria-label", p.title + (themeLocked ? " (locked)" : ""));
       var img = document.createElement("img");
-      img.src = (isToddler() && p.sthumb) ? p.sthumb : p.thumb; // colored reference thumbnail (simple for 0-2)
+      img.src = tierThumb(p); // reference thumbnail for the child's age tier
       img.alt = p.title;
       img.loading = "lazy";
       card.appendChild(img);
@@ -306,8 +325,8 @@
     $("color-title").textContent = page ? page.title : "Free Draw";
     show("s-color");
     var tapMode = profile && profile.age === "0-2";
-    // 0-2 kids get the ultra-simple bold line art
-    var artFile = page ? (tapMode && page.sfile ? page.sfile : page.file) : null;
+    // line art for the child's age tier (simple / regular / detail)
+    var artFile = page ? tierFile(page) : null;
 
     // NEVER remove the canvas element from the DOM — reuse it across opens.
     // Create the engine once, then reset its state for each new page.
@@ -340,9 +359,10 @@
     var fxBtn = $("tool-fx");
     if (fxBtn) fxBtn.style.display = tapMode ? "none" : "";
 
-    // WIP key for autosave: unique per page + art variant (toddler simple vs regular)
+    // WIP key for autosave: unique per page + art tier variant
+    var tierSuffix = ageTier() === "simple" ? ":toddler" : ageTier() === "detail" ? ":detail" : "";
     wipPageKey = page
-      ? ("page:" + (currentTheme ? currentTheme.id : "?") + ":" + page.id + (tapMode ? ":toddler" : ""))
+      ? ("page:" + (currentTheme ? currentTheme.id : "?") + ":" + page.id + tierSuffix)
       : "freedraw";
 
     requestAnimationFrame(function () {
