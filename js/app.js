@@ -6,7 +6,7 @@
   var LS_UNLOCKED = "cw_unlocked_v1";
   var BRUSH_PX = { s: 12, m: 26, l: 48 };
 
-  var LOCK_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z" fill="#fff"/></svg>';
+  var LOCK_SVG = '<img class="lock-img" src="assets/ui/lock.png" alt="">';
 
   function isUnlocked() {
     try { return localStorage.getItem(LS_UNLOCKED) === "1"; } catch (e) { return false; }
@@ -180,20 +180,8 @@
    * Engine + one cart per world. Kids drag the train sideways; tapping an
    * unlocked cart makes the train "travel" into that world. Finished
    * pictures ride in the carts as tiny passengers. */
-  var ENGINE_SVG =
-    '<svg viewBox="0 0 320 176" aria-hidden="true">' +
-    '<path d="M6 150 L40 118 L40 150 Z" fill="#c9334e"/>' +
-    '<rect x="36" y="66" width="158" height="66" rx="33" fill="#ef476f"/>' +
-    '<circle cx="44" cy="99" r="35" fill="#f0566b"/>' +
-    '<circle cx="44" cy="99" r="14" fill="#ffd93d"/>' +
-    '<rect x="58" y="18" width="30" height="52" rx="9" fill="#3a6ea5"/>' +
-    '<rect x="48" y="6" width="50" height="18" rx="9" fill="#2c5a8a"/>' +
-    '<path d="M118 70 a20 20 0 0 1 40 0 Z" fill="#ffd93d"/>' +
-    '<rect x="192" y="26" width="112" height="106" rx="16" fill="#ef476f"/>' +
-    '<rect x="192" y="26" width="112" height="22" rx="11" fill="#d13a63"/>' +
-    '<rect x="10" y="132" width="300" height="13" rx="6" fill="#8a4b2a"/>' +
-    '<rect x="10" y="128" width="300" height="6" rx="3" fill="#a05e33"/>' +
-    '</svg>';
+  var WHEEL_IMG = '<img class="wheel" src="assets/train/wheel.png" alt="">';
+  var WHEEL_IMG_BIG = '<img class="wheel w-big" src="assets/train/wheel.png" alt="">';
   var PUFF_COLORS = ["#ff6b9d", "#ffd93d", "#4dabff", "#3ddc97", "#a78bfa", "#ff9f43"];
 
   function cartPassengers(theme) {
@@ -213,21 +201,18 @@
     var cart = document.createElement("button");
     cart.className = "cart" + (locked ? " locked" : "");
     cart.setAttribute("aria-label", t.title + (locked ? " (locked)" : ""));
-    var riders = document.createElement("span");
-    riders.className = "cart-riders";
-    var rimg = document.createElement("img");
-    rimg.src = "assets/train/cart-" + t.id + ".png";
-    rimg.alt = "";
-    rimg.loading = "lazy";
-    riders.appendChild(rimg);
-    cart.appendChild(riders);
-    var body = document.createElement("span");
-    body.className = "cart-body";
-    body.style.background = t.gradient;
+    var scene = document.createElement("span");
+    scene.className = "cart-scene";
+    var simg = document.createElement("img");
+    simg.src = "assets/train/cart-" + t.id + ".png";
+    simg.alt = "";
+    simg.loading = "lazy";
+    scene.appendChild(simg);
+    cart.appendChild(scene);
     var name = document.createElement("span");
     name.className = "cart-name";
     name.textContent = t.title;
-    body.appendChild(name);
+    cart.appendChild(name);
     var pass = cartPassengers(t);
     if (pass.length) {
       var strip = document.createElement("span");
@@ -237,9 +222,8 @@
         im.src = url; im.alt = "";
         strip.appendChild(im);
       });
-      body.appendChild(strip);
+      cart.appendChild(strip);
     }
-    cart.appendChild(body);
     if (locked) {
       var cover = document.createElement("span");
       cover.className = "cart-cover";
@@ -248,7 +232,7 @@
     }
     var wheels = document.createElement("span");
     wheels.className = "cart-wheels";
-    wheels.innerHTML = '<span class="wheel"></span><span class="wheel"></span>';
+    wheels.innerHTML = WHEEL_IMG + WHEEL_IMG;
     cart.appendChild(wheels);
     cart.addEventListener("click", function () {
       if (locked) {
@@ -275,9 +259,9 @@
     eng.className = "engine";
     eng.innerHTML =
       '<span class="eng-smoke" id="eng-smoke"></span>' +
-      '<span class="eng-art">' + ENGINE_SVG + '</span>' +
-      '<span class="eng-cab"><img src="assets/driver.png" alt="Your train driver"></span>' +
-      '<span class="eng-wheels"><span class="wheel w-big"></span><span class="wheel"></span><span class="wheel"></span></span>';
+      '<span class="eng-art"><img class="eng-body" src="assets/train/engine.png" alt="">' +
+      '<span class="eng-cab"><img src="assets/driver.png" alt="Your train driver"></span></span>' +
+      '<span class="eng-wheels">' + WHEEL_IMG_BIG + WHEEL_IMG + WHEEL_IMG + '</span>';
     train.appendChild(eng);
     themes.forEach(function (t) {
       train.appendChild(buildCart(t, !t.free && !unlocked));
@@ -312,6 +296,8 @@
     var boost = trainAnim.travelBoost;
     $("ts-clouds").style.backgroundPositionX = (-(sl * 0.22 + boost * 0.5)).toFixed(1) + "px";
     $("ts-hills").style.backgroundPositionX = (-(sl * 0.5 + boost)).toFixed(1) + "px";
+    var rb = $("ts-rainbow");
+    if (rb) rb.style.transform = "translateX(" + (-(sl * 0.1 + boost * 0.25)).toFixed(1) + "px)";
     if (trainAnim.travelBoost > 0) trainAnim.travelBoost *= 0.94;
     // smoke puffs: gentle idle rate, a little faster while rolling
     var interval = speed > 4 ? 230 : 640;
@@ -409,6 +395,8 @@
     var scr = $("s-pages");
     scr.style.background = currentTheme.gradient;
     $("pages-title").textContent = currentTheme.title;
+    var pm = $("pages-mascot");
+    if (pm) pm.src = "assets/train/cart-" + currentTheme.id + ".png";
     var fin = loadFinished();
     var rows = [$("page-row-1"), $("page-row-2")];
     rows.forEach(function (r) { r.innerHTML = ""; });
@@ -425,7 +413,7 @@
       if (doneUrl && !themeLocked) {
         var star = document.createElement("span");
         star.className = "done-badge";
-        star.textContent = "★";
+        star.innerHTML = '<img src="assets/ui/star.png" alt="">';
         card.appendChild(star);
       }
       if (themeLocked) {
@@ -522,13 +510,13 @@
   var FX_TOOLS = [
     { id: "magic", label: "Magic",
       cls: "fx-magic",
-      svg: '<svg viewBox="0 0 24 24"><path d="M4 20l3-3 1.5 1.5L5.5 21.5 4 20z" fill="#fff"/><path d="M12 2l2.2 4.6L19 8.8l-4.8 2.2L12 15.6l-2.2-4.6L5 8.8l4.8-2.2L12 2z" fill="#fff"/><path d="M19 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/wand.png" alt="">' },
     { id: "glitter", label: "Glitter",
       cls: "fx-glitter",
-      svg: '<svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.4" fill="#fff"/><circle cx="15" cy="6" r="1.8" fill="#fff"/><circle cx="18" cy="14" r="2.6" fill="#fff"/><circle cx="10" cy="16" r="1.6" fill="#fff"/><circle cx="5" cy="18" r="1.4" fill="#fff"/><path d="M13 12l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9.9-1.9z" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/fx-glitter.png" alt="">' },
     { id: "sparkle", label: "Sparkle",
       cls: "fx-sparkle",
-      svg: '<svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.2L20 10.6l-5.6 2.4L12 18.2l-2.4-5.2L4 10.6l5.6-2.4L12 3z" fill="#fff"/><path d="M19 15l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1 1-2.2z" fill="#fff"/></svg>' }
+      svg: '<img src="assets/ui/fx-sparkle.png" alt="">' }
   ];
   function toggleFxPop(force) {
     var pop = $("fx-pop");
@@ -561,15 +549,15 @@
   /* ---- fill styles popup: solid free; rainbow + patterns premium ---- */
   var FILL_STYLES = [
     { id: "solid", label: "Solid", cls: "fill-solid",
-      svg: '<svg viewBox="0 0 24 24"><path d="M12 3s6 6.3 6 10.2A6 6 0 0 1 6 13.2C6 9.3 12 3 12 3z" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/fx-droplet.png" alt="">' },
     { id: "rainbow", label: "Rainbow", cls: "fill-rainbow",
-      svg: '<svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0h-3.2a4.8 4.8 0 0 0-9.6 0H4z" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/fx-rainbow.png" alt="">' },
     { id: "dots", label: "Dots", cls: "fill-dots",
-      svg: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6" fill="#fff"/><circle cx="17" cy="6" r="2.6" fill="#fff"/><circle cx="11.5" cy="12" r="2.6" fill="#fff"/><circle cx="6" cy="18" r="2.6" fill="#fff"/><circle cx="17" cy="18" r="2.6" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/fx-dots.png" alt="">' },
     { id: "stars", label: "Stars", cls: "fill-stars",
-      svg: '<svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.2 5.6 2.4-5.6 2.4L12 18.2l-2.4-5.2L4 10.6l5.6-2.4L12 3z" fill="#fff"/></svg>' },
+      svg: '<img src="assets/ui/star.png" alt="">' },
     { id: "stripes", label: "Stripes", cls: "fill-stripes",
-      svg: '<svg viewBox="0 0 24 24"><path d="M5 19L19 5l1.8 1.8L6.8 20.8 5 19zM3.2 12.2L12.2 3.2l1.8 1.8L5 14l-1.8-1.8zM10 21l9-9 1.8 1.8-9 9L10 21z" fill="#fff"/></svg>' }
+      svg: '<img src="assets/ui/fx-stripes.png" alt="">' }
   ];
   function toggleFillPop(force) {
     var pop = $("fill-pop");

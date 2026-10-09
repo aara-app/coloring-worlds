@@ -86,17 +86,17 @@
 
   var INTERESTS = [
     { id: "cars", label: "Cars",
-      svg: '<svg viewBox="0 0 48 48"><path d="M6 30l4-10a4 4 0 0 1 3.8-2.6h20.4A4 4 0 0 1 38 20l4 10v6h-4a4 4 0 0 1-8 0H18a4 4 0 0 1-8 0H6v-6z" fill="#ff6b6b"/><circle cx="14" cy="36" r="4" fill="#333"/><circle cx="34" cy="36" r="4" fill="#333"/><rect x="16" y="22" width="16" height="6" rx="2" fill="#bfe8ff"/></svg>' },
+      svg: '<img src="assets/ui/interest-cars.png" alt="">' },
     { id: "dinos", label: "Dinos",
-      svg: '<svg viewBox="0 0 48 48"><path d="M8 38c0-8 4-14 10-18-1-4 1-8 5-10 3 3 8 4 12 3l5 8-6 2c1 5-1 10-5 13l-3 2H12l-4-4z" fill="#4fe3a5"/><circle cx="30" cy="14" r="2" fill="#223"/></svg>' },
+      svg: '<img src="assets/ui/interest-dinos.png" alt="">' },
     { id: "princess", label: "Princess",
-      svg: '<svg viewBox="0 0 48 48"><path d="M8 36l-2-16 8 6 4-12 4 10 4-10 4 12 8-6-2 16H8z" fill="#ffd93d"/><rect x="10" y="36" width="28" height="4" rx="2" fill="#ff9f43"/><circle cx="24" cy="42" r="2.5" fill="#ff6b9d"/></svg>' },
+      svg: '<img src="assets/ui/interest-princess.png" alt="">' },
     { id: "animals", label: "Animals",
-      svg: '<svg viewBox="0 0 48 48"><circle cx="24" cy="26" r="12" fill="#ffb26b"/><circle cx="14" cy="14" r="5" fill="#ffb26b"/><circle cx="34" cy="14" r="5" fill="#ffb26b"/><circle cx="14" cy="14" r="2" fill="#ff9f9f"/><circle cx="34" cy="14" r="2" fill="#ff9f9f"/><circle cx="19" cy="24" r="2" fill="#333"/><circle cx="29" cy="24" r="2" fill="#333"/><ellipse cx="24" cy="30" rx="3" ry="2.4" fill="#333"/></svg>' },
+      svg: '<img src="assets/ui/interest-animals.png" alt="">' },
     { id: "space", label: "Space",
-      svg: '<svg viewBox="0 0 48 48"><path d="M24 6c4 6 8 10 8 18a8 8 0 0 1-16 0c0-8 4-12 8-18z" fill="#a78bfa"/><circle cx="24" cy="24" r="4" fill="#fff"/><path d="M20 36l-2 6M28 36l2 6" stroke="#ff9f43" stroke-width="3" stroke-linecap="round"/></svg>' },
+      svg: '<img src="assets/ui/interest-space.png" alt="">' },
     { id: "ocean", label: "Ocean",
-      svg: '<svg viewBox="0 0 48 48"><path d="M6 30c4-2 8 2 12 0s8 2 12 0 8 2 12 0v8H6v-8z" fill="#4dabff"/><path d="M14 22c4-6 12-8 18-4l4 6-8 2c-4 2-10 0-14-4z" fill="#ff9f43"/><circle cx="30" cy="20" r="1.6" fill="#223"/></svg>' }
+      svg: '<img src="assets/ui/interest-ocean.png" alt="">' }
   ];
 
   /* Studio palette: first 12 (brightest kid colors) free, rest premium-locked */
