@@ -238,9 +238,6 @@
       if (locked) {
         sfx("error");
         toast("Ask a grown-up to unlock!");
-        cart.classList.remove("shake-it");
-        void cart.offsetWidth;
-        cart.classList.add("shake-it");
         return;
       }
       travelTo(t, cart);
@@ -274,7 +271,7 @@
   }
 
   /* ---- train motion: parallax, wheel spin, smoke puffs ---- */
-  var trainAnim = { running: false, lastSl: 0, vel: 0, lastPuff: 0, travelBoost: 0, rollUntil: 0, rolling: false, hintGone: false };
+  var trainAnim = { running: false, lastSl: 0, vel: 0, lastPuff: 0, travelBoost: 0, hintGone: false };
   /* The hint retires for good once the child has really dragged the train. */
   function dismissTrainHint() {
     if (trainAnim.hintGone) return;
@@ -292,21 +289,13 @@
     var home = $("s-home");
     if (!home || !home.classList.contains("active")) { trainAnim.running = false; return; }
     var vp = $("train-viewport");
-    var scene = $("train-scene");
     var sl = vp.scrollLeft;
     var vel = sl - trainAnim.lastSl;
     trainAnim.lastSl = sl;
     trainAnim.vel = trainAnim.vel * 0.82 + vel * 0.18;
     var speed = Math.abs(trainAnim.vel);
-    // Motion design: at rest the train sits perfectly still — the bounce
-    // exists ONLY while the train is actually rolling (drag/scroll) or
-    // travelling into a world.
-    if (speed > 1.4) trainAnim.rollUntil = ts + 240;
-    var rolling = ts < trainAnim.rollUntil || scene.classList.contains("traveling");
-    if (rolling !== trainAnim.rolling) {
-      trainAnim.rolling = rolling;
-      scene.classList.toggle("rolling", rolling);
-    }
+    // Motion design: the train NEVER bounces or bobs — at rest, while
+    // dragging and during travel it only ever glides horizontally.
     if (!trainAnim.hintGone && Math.abs(sl) > 30) dismissTrainHint();
     // wheels: one full turn per ~215px of travel
     $("train").style.setProperty("--wrot", ((sl * 360 / 215) % 360).toFixed(1) + "deg");
@@ -405,8 +394,9 @@
 
   /* ================= world screen (picture picker) =================
    * Full-bleed world color, big rounded title, the 10 pictures as big
-   * white cards in two horizontal scrolling rows. Finished pictures
-   * show their colored version with a gold star. */
+   * white cards in two rows of five — swipe rows in portrait, a fluid
+   * full-width grid in landscape. Finished pictures show their colored
+   * version with a gold star. */
   function openTheme(themeId) {
     currentTheme = window.CW_DATA.themeById(themeId);
     if (!currentTheme) { enterHome(); return; }
