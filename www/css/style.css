@@ -641,19 +641,10 @@ body.boy .ob-title, body.boy .topbar-title {
     linear-gradient(180deg, #7a4d21 0 6px, #5d3a16 6px 11px, transparent 11px),
     repeating-linear-gradient(90deg, #9c6a30 0 20px, transparent 20px 74px);
 }
-/* Motion design: at REST the train is perfectly still (no idle bob — it
- * read as a shake). The gentle bounce exists only while the train is
- * actually rolling (drag/scroll) or travelling into a world; the loop
- * toggles .rolling from the real scroll velocity. */
-.train-scene.rolling .train > .engine, .train-scene.rolling .train > .cart,
-.train-scene.traveling .train > .engine, .train-scene.traveling .train > .cart {
-  animation: trainbob .55s ease-in-out infinite alternate;
-}
-.train-scene.rolling .train > .cart:nth-child(odd),
-.train-scene.traveling .train > .cart:nth-child(odd) { animation-delay: .12s; }
-.train-scene.rolling .train > .cart:nth-child(3n),
-.train-scene.traveling .train > .cart:nth-child(3n) { animation-delay: .24s; }
-@keyframes trainbob { from { transform: translateY(0); } to { transform: translateY(-2.5px); } }
+/* Motion design: the train NEVER bounces, bobs or shakes — not at rest,
+ * not while the track is dragged/scrolled, not during the ride into a
+ * world. It only ever glides horizontally (scroll + wheel spin). Any
+ * vertical bob read as a shake, so it is removed entirely. */
 
 /* wheels: illustrated PNGs (spin via --wrot set from scroll position) */
 .wheel {
@@ -693,12 +684,7 @@ body.boy .ob-title, body.boy .topbar-title {
   width: 100%; height: auto; display: block;
   filter: drop-shadow(0 5px 5px rgba(58, 46, 63, .22));
 }
-/* riders bounce only while the train is moving, with the train */
-.train-scene.rolling .cart-scene img,
-.train-scene.traveling .cart-scene img {
-  animation: riderbounce 1.3s ease-in-out infinite alternate;
-}
-@keyframes riderbounce { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+/* riders and cart contents sit perfectly still too — no bounce, ever */
 .cart-name {
   position: absolute; top: 88px; left: 50%; transform: translateX(-50%); z-index: 3;
   background: linear-gradient(180deg, #ffffff, #fdf3d8); color: var(--ink);
@@ -724,11 +710,6 @@ body.boy .ob-title, body.boy .topbar-title {
   pointer-events: none;
 }
 .cart-lock-badge img { width: 27px; height: 27px; object-fit: contain; display: block; }
-.cart.shake-it { animation: cartshake .45s ease; }
-@keyframes cartshake {
-  0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); }
-  45% { transform: translateX(6px); } 70% { transform: translateX(-4px); } 90% { transform: translateX(3px); }
-}
 .puff-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
 .puff { position: absolute; border-radius: 50%; filter: blur(3px); opacity: .8; pointer-events: none; }
 .train-hint {
@@ -953,6 +934,35 @@ body.boy .ob-title, body.boy .topbar-title {
   #gate-hold { padding: 13px 30px; font-size: 20px; }
   .modal-card h2 { font-size: 24px; }
   .gate-ico { width: 46px; height: 46px; }
+}
+
+/* ============ WORLD PICKER: FULL-WIDTH FLUID GRID (landscape) ============
+ * In landscape the picker's two rows become a true 5-across fluid grid
+ * that fills the whole screen: the cards spread edge to edge and grow
+ * with the space, instead of capping at a small fixed width and leaving
+ * the right half of the screen empty. The page art is square on white,
+ * so a contain-fit inside each stretched card shows it whole. Portrait
+ * keeps the swipe rows exactly as they were. */
+@media (orientation: landscape) {
+  #s-pages.active { display: flex; flex-direction: column; overflow: hidden; }
+  #s-pages .world-rows {
+    flex: 1 1 auto; min-height: 0; width: 100%;
+    display: grid; grid-template-rows: 1fr 1fr; gap: 14px;
+    padding: 6px 14px 4px;
+  }
+  #s-pages .world-row {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+    overflow: visible; padding: 0; min-height: 0; min-width: 0;
+    scroll-snap-type: none;
+  }
+  #s-pages .world-row .page-card {
+    width: auto; max-width: none; height: 100%; min-height: 0; min-width: 0;
+    display: flex; flex-direction: column; scroll-snap-align: none;
+  }
+  #s-pages .world-row .page-card > img {
+    flex: 1 1 auto; min-height: 0; width: 100%; aspect-ratio: auto; object-fit: contain;
+  }
+  #s-pages .world-row .page-card .ptitle { flex: 0 0 auto; }
 }
 
 /* narrow portrait phones: the home top row stays one tidy line */
