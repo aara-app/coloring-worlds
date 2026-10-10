@@ -225,10 +225,11 @@
       cart.appendChild(strip);
     }
     if (locked) {
-      var cover = document.createElement("span");
-      cover.className = "cart-cover";
-      cover.innerHTML = '<span class="cover-lock">' + LOCK_SVG + '</span><span class="cover-zzz">Z z z</span>';
-      cart.appendChild(cover);
+      // small corner badge only — the cart art stays fully visible
+      var badge = document.createElement("span");
+      badge.className = "cart-lock-badge";
+      badge.innerHTML = LOCK_SVG;
+      cart.appendChild(badge);
     }
     var wheels = document.createElement("span");
     wheels.className = "cart-wheels";
@@ -274,7 +275,14 @@
   }
 
   /* ---- train motion: parallax, wheel spin, smoke puffs ---- */
-  var trainAnim = { running: false, lastSl: 0, vel: 0, lastPuff: 0, travelBoost: 0 };
+  var trainAnim = { running: false, lastSl: 0, vel: 0, lastPuff: 0, travelBoost: 0, rollUntil: 0, rolling: false, hintGone: false };
+  /* The hint retires for good once the child has really dragged the train. */
+  function dismissTrainHint() {
+    if (trainAnim.hintGone) return;
+    trainAnim.hintGone = true;
+    var hint = $("train-hint");
+    if (hint) hint.classList.add("hint-hide");
+  }
   function startTrainLoop() {
     if (trainAnim.running) return;
     trainAnim.running = true;
@@ -285,11 +293,22 @@
     var home = $("s-home");
     if (!home || !home.classList.contains("active")) { trainAnim.running = false; return; }
     var vp = $("train-viewport");
+    var scene = $("train-scene");
     var sl = vp.scrollLeft;
     var vel = sl - trainAnim.lastSl;
     trainAnim.lastSl = sl;
     trainAnim.vel = trainAnim.vel * 0.82 + vel * 0.18;
     var speed = Math.abs(trainAnim.vel);
+    // Motion design: at rest the train sits perfectly still — the bounce
+    // exists ONLY while the train is actually rolling (drag/scroll) or
+    // travelling into a world.
+    if (speed > 1.4) trainAnim.rollUntil = ts + 240;
+    var rolling = ts < trainAnim.rollUntil || scene.classList.contains("traveling");
+    if (rolling !== trainAnim.rolling) {
+      trainAnim.rolling = rolling;
+      scene.classList.toggle("rolling", rolling);
+    }
+    if (!trainAnim.hintGone && Math.abs(sl) > 30) dismissTrainHint();
     // wheels: one full turn per ~215px of travel
     $("train").style.setProperty("--wrot", ((sl * 360 / 215) % 360).toFixed(1) + "deg");
     // parallax: far layers drift slower than the train
@@ -364,6 +383,7 @@
   function travelTo(theme, cartEl) {
     if (traveling) return;
     traveling = true;
+    dismissTrainHint();
     sfx("whoosh");
     var scene = $("train-scene"), vp = $("train-viewport");
     scene.classList.add("traveling");
@@ -402,11 +422,14 @@
     rows.forEach(function (r) { r.innerHTML = ""; });
     currentTheme.pages.forEach(function (p, idx) {
       var doneUrl = fin[finKey(currentTheme.id, p.id)];
+      // true state of this page: done > halfway (real WIP snapshot) > line art
+      var wipUrl = doneUrl ? null : wipThumbForPage(currentTheme.id, p.id);
       var card = document.createElement("button");
       card.className = "page-card";
-      card.setAttribute("aria-label", p.title + (themeLocked ? " (locked)" : ""));
+      card.setAttribute("aria-label",
+        p.title + (themeLocked ? " (locked)" : doneUrl ? " (finished)" : wipUrl ? " (in progress)" : ""));
       var img = document.createElement("img");
-      img.src = doneUrl || tierThumb(p); // finished art wins over line art
+      img.src = doneUrl || wipUrl || tierThumb(p);
       img.alt = p.title;
       img.loading = "lazy";
       card.appendChild(img);
@@ -415,6 +438,12 @@
         star.className = "done-badge";
         star.innerHTML = '<img src="assets/ui/star.png" alt="">';
         card.appendChild(star);
+      }
+      if (wipUrl && !themeLocked) {
+        var prog = document.createElement("span");
+        prog.className = "wip-badge";
+        prog.innerHTML = '<img src="assets/ui/crayon.png" alt="">';
+        card.appendChild(prog);
       }
       if (themeLocked) {
         var badge = document.createElement("span");
@@ -495,7 +524,12 @@
    * bucket with it — one tap on a region fills with the special paint. */
   function applyFillStyle(mode) {
     fillModeSel = mode;
-    if (engine) { engine.setFillMode(mode); engine.setTool("fill"); }
+    if (engine) {
+      engine.setFillMode(mode);
+      engine.setTool("fill");
+      // the pattern brush trails the same shape the bucket would fill
+      if (mode === "dots" || mode === "stars" || mode === "hearts") engine.setPatternShape(mode);
+    }
     setToolUI("fill");
     setColorDot();
     sfx("colorPick");
@@ -643,20 +677,90 @@
     { id: "crayon", label: "Crayon", icon: "assets/ui/crayon.png" },
     { id: "pencil", label: "Pencil", icon: "assets/ui/pencil.png" },
     { id: "marker", label: "Marker", icon: "assets/ui/brush.png" },
-    { id: "magic", label: "Magic", icon: "assets/ui/wand.png", premium: true },
+    { id: "spray", label: "Spray", icon: "assets/ui/spray.png" },
+    { id: "watercolor", label: "Watercolor", icon: "assets/ui/palette.png" },
+    { id: "pattern", label: "Patterns", icon: "assets/ui/fx-dots.png" },
+    { id: "eraser", label: "Eraser", icon: "assets/ui/eraser.png" },
+    { id: "magic", label: "Rainbow", icon: "assets/ui/fx-rainbow.png", premium: true },
+    { id: "neon", label: "Neon", icon: "assets/ui/fx-sparkle.png", premium: true },
     { id: "glitter", label: "Glitter", icon: "assets/ui/fx-glitter.png", premium: true },
-    { id: "sparkle", label: "Sparkles", icon: "assets/ui/fx-sparkle.png", premium: true },
-    { id: "eraser", label: "Eraser", icon: "assets/ui/eraser.png" }
+    { id: "sparkle", label: "Sparkles", icon: "assets/ui/star.png", premium: true },
+    { id: "stamp", label: "Stamps", icon: "assets/ui/fx-heart.png", premium: true }
   ];
   function toolIcon(id) {
     for (var i = 0; i < TOOL_DEFS.length; i++) if (TOOL_DEFS[i].id === id) return TOOL_DEFS[i].icon;
     return "assets/ui/brush.png";
   }
 
+  /* ---- stamps: tap-to-place pictures from the premium icon set ---- */
+  var STAMP_DEFS = [
+    { id: "star", label: "Star", icon: "assets/ui/star.png" },
+    { id: "heart", label: "Heart", icon: "assets/ui/fx-heart.png" },
+    { id: "flower", label: "Flower", icon: "assets/ui/stamp-flower.png" },
+    { id: "butterfly", label: "Butterfly", icon: "assets/ui/stamp-butterfly.png" },
+    { id: "rainbow", label: "Rainbow", icon: "assets/ui/fx-rainbow.png" },
+    { id: "sun", label: "Sun", icon: "assets/train/sun.png" },
+    { id: "music", label: "Music", icon: "assets/ui/fx-music.png" }
+  ];
+  var stampImgs = {};
+  var currentStamp = "star";
+  function preloadStamps() {
+    STAMP_DEFS.forEach(function (sd) {
+      var im = new Image();
+      im.src = sd.icon;
+      stampImgs[sd.id] = im;
+    });
+  }
+  function stampIcon(id) {
+    for (var i = 0; i < STAMP_DEFS.length; i++) if (STAMP_DEFS[i].id === id) return STAMP_DEFS[i].icon;
+    return STAMP_DEFS[0].icon;
+  }
+  /* Stamp size follows the S/M/L brush-size choice (canvas px). */
+  function stampSizePx() {
+    if (!engine) return 92;
+    if (engine.brushSize <= BRUSH_PX.s) return 68;
+    if (engine.brushSize <= BRUSH_PX.m) return 92;
+    return 118;
+  }
+  function applyStampToEngine() {
+    if (engine) engine.setStamp(stampImgs[currentStamp], stampSizePx());
+  }
+  function toggleStampPop(force) {
+    var pop = $("stamp-pop");
+    if (!pop) return;
+    var showIt = typeof force === "boolean" ? force : pop.classList.contains("hidden");
+    if (showIt) buildStampPop();
+    pop.classList.toggle("hidden", !showIt);
+  }
+  function buildStampPop() {
+    var pop = $("stamp-pop");
+    pop.innerHTML = "";
+    var title = document.createElement("div");
+    title.className = "stamp-pop-title";
+    title.textContent = "Pick a stamp!";
+    pop.appendChild(title);
+    var grid = document.createElement("div");
+    grid.className = "tools-grid stamp-grid";
+    STAMP_DEFS.forEach(function (sd) {
+      var b = document.createElement("button");
+      b.className = "tool-btn" + (currentStamp === sd.id ? " sel" : "");
+      b.innerHTML = '<span class="tool-ico"><img src="' + sd.icon + '" alt=""></span><span>' + sd.label + "</span>";
+      b.addEventListener("click", function () {
+        currentStamp = sd.id;
+        applyStampToEngine();
+        setToolUI("stamp");
+        sfx("select");
+        toggleStampPop(false);
+      });
+      grid.appendChild(b);
+    });
+    pop.appendChild(grid);
+  }
+
   /* The rail's big tool button always shows the current tool's icon. */
   function setToolUI(name) {
     var img = $("tool-current-img");
-    if (img) img.src = toolIcon(name);
+    if (img) img.src = name === "stamp" ? stampIcon(currentStamp) : toolIcon(name);
     var er = $("tool-eraser");
     if (er) er.classList.toggle("sel", name === "eraser");
     var tc = $("tool-current");
@@ -664,7 +768,16 @@
   }
 
   function pickTool(id) {
-    if (engine) engine.setTool(id);
+    if (engine) {
+      engine.setTool(id);
+      if (id === "stamp") applyStampToEngine();
+      if (id === "pattern") {
+        // the pattern brush trails whichever pattern is picked (or stars)
+        if (fillModeSel === "dots" || fillModeSel === "stars" || fillModeSel === "hearts") {
+          engine.setPatternShape(fillModeSel);
+        }
+      }
+    }
     setToolUI(id);
     sfx("select");
   }
@@ -691,6 +804,7 @@
         if (td.premium && !unlocked) { sfx("error"); toast("Unlock for magic tools!"); return; }
         pickTool(td.id);
         toggleToolsPop(false);
+        if (td.id === "stamp") toggleStampPop(true); // choose which stamp to place
       });
       grid.appendChild(b);
     });
@@ -707,7 +821,7 @@
       b.setAttribute("aria-label", "Brush size " + sz[0]);
       b.innerHTML = '<span class="dot ' + sz[1] + '"></span>';
       b.addEventListener("click", function () {
-        if (engine) engine.setBrushSize(BRUSH_PX[sz[0]]);
+        if (engine) { engine.setBrushSize(BRUSH_PX[sz[0]]); applyStampToEngine(); }
         sizes.querySelectorAll(".size-btn").forEach(function (x) { x.classList.remove("sel"); });
         b.classList.add("sel");
         sfx("tap");
@@ -776,7 +890,9 @@
 
   function openColor(page) {
     // page may be null => free draw
+    flushWipSave(); // bank any pending autosave from the previous picture
     currentPage = page || null;
+    wipMuted = true; // engine resets/loads fire onChange — not user painting
     $("color-title").textContent = page ? page.title : "Free Draw";
     show("s-color");
     var tapMode = profile && profile.age === "0-2";
@@ -808,6 +924,7 @@
     setColorDot();
     setToolUI(tapMode ? "fill" : "marker");
     toggleToolsPop(false);
+    toggleStampPop(false);
     refreshRail();
 
     // age-adaptive toolbar: toddlers only get tap-to-fill solids —
@@ -820,10 +937,7 @@
     if (tabs) tabs.style.display = tapMode ? "none" : "";
 
     // WIP key for autosave: unique per page + art tier variant
-    var tierSuffix = ageTier() === "simple" ? ":toddler" : ageTier() === "detail" ? ":detail" : "";
-    wipPageKey = page
-      ? ("page:" + (currentTheme ? currentTheme.id : "?") + ":" + page.id + tierSuffix)
-      : "freedraw";
+    wipPageKey = page && currentTheme ? wipKeyFor(currentTheme.id, page.id) : "freedraw";
 
     requestAnimationFrame(function () {
       fitCanvas();
@@ -836,51 +950,156 @@
           }
           restoreWip();
           fitCanvas();
+          wipMuted = false;
         });
       } else {
         engine.blank();
         restoreWip();
+        wipMuted = false;
       }
       setTimeout(refreshRail, 500); // after any restored WIP has landed
+      setTimeout(fitCanvas, 150);   // settle pass once layout is final
     });
   }
 
   /* ================= work-in-progress autosave =================
-   * Every finished stroke is snapshotted to localStorage under the current
-   * page key, so leaving mid-picture never loses work. Restored on reopen. */
+   * Every finished stroke is snapshotted per page, so leaving a picture
+   * half-done never loses it — and every display (world cards, train-cart
+   * passengers) can show the page's TRUE state: not started (line art),
+   * halfway (the child's real half-colored snapshot) or done (finished
+   * store). Two stores, both keyed by the page's WIP key:
+   *   cw_wip_map_v1     — paint layer at 512px PNG (restorable) + timestamp
+   *   cw_wip_thumbs_v1  — composited 168px JPEG thumbnail for displays
+   * A blank canvas REMOVES the page's entries (it is "not started" again).
+   * The legacy single-slot cw_wip_v1 is migrated into the map on boot. */
   var WIP_KEY = "cw_wip_v1";
+  var WIP_MAP_KEY = "cw_wip_map_v1";
+  var WIP_THUMB_KEY = "cw_wip_thumbs_v1";
+  var WIP_STORE_SIZE = 512;
+  var WIP_MAX_AGE = 7 * 24 * 3600 * 1000;
   var wipPageKey = null;
-  function scheduleWipSave() {
-    if (!engine || !wipPageKey) return;
+  var wipMuted = false;     // true while a page is opening/restoring
+  var wipSaveTimer = null;
+
+  function loadWipMap() {
+    try { return JSON.parse(localStorage.getItem(WIP_MAP_KEY) || "{}") || {}; }
+    catch (e) { return {}; }
+  }
+  function saveWipMap(map) {
+    try { localStorage.setItem(WIP_MAP_KEY, JSON.stringify(map)); return; } catch (e) {}
+    // quota tight: drop the oldest half and retry once
+    var keys = Object.keys(map).sort(function (a, b) { return (map[a].at || 0) - (map[b].at || 0); });
+    keys.slice(0, Math.ceil(keys.length / 2)).forEach(function (k) { delete map[k]; });
+    try { localStorage.setItem(WIP_MAP_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+  function loadWipThumbs() {
+    try { return JSON.parse(localStorage.getItem(WIP_THUMB_KEY) || "{}") || {}; }
+    catch (e) { return {}; }
+  }
+  function saveWipThumbs(map) {
+    try { localStorage.setItem(WIP_THUMB_KEY, JSON.stringify(map)); return; } catch (e) {}
+    var keys = Object.keys(map).sort(function (a, b) { return (map[a].at || 0) - (map[b].at || 0); });
+    keys.slice(0, Math.ceil(keys.length / 2)).forEach(function (k) { delete map[k]; });
+    try { localStorage.setItem(WIP_THUMB_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+  function migrateLegacyWip() {
     try {
-      var url = engine.colorCanvas.toDataURL("image/png");
-      var payload = JSON.stringify({ key: wipPageKey, dataUrl: url, at: Date.now() });
-      try { localStorage.setItem(WIP_KEY, payload); }
-      catch (e) { try { localStorage.removeItem(WIP_KEY); } catch (e2) {} } // storage full: drop it
+      var raw = localStorage.getItem(WIP_KEY);
+      if (!raw) return;
+      var wip = JSON.parse(raw);
+      if (wip && wip.key && wip.dataUrl) {
+        var map = loadWipMap();
+        if (!map[wip.key]) {
+          map[wip.key] = { dataUrl: wip.dataUrl, at: wip.at || Date.now() };
+          saveWipMap(map);
+        }
+      }
+      localStorage.removeItem(WIP_KEY);
     } catch (e) {}
   }
-  function clearWip() { try { localStorage.removeItem(WIP_KEY); } catch (e) {} }
-  /* Thumbnail of the in-progress picture for a theme (train passenger). */
-  function wipThumbFor(themeId) {
-    try {
-      var wip = JSON.parse(localStorage.getItem(WIP_KEY) || "null");
-      if (wip && wip.dataUrl && wip.key && wip.key.indexOf("page:" + themeId + ":") === 0) {
-        if (Date.now() - (wip.at || 0) <= 7 * 24 * 3600 * 1000) return wip.dataUrl;
-      }
-    } catch (e) {}
+  /* The WIP key for a page under the CURRENT profile's art tier. */
+  function wipKeyFor(themeId, pageId) {
+    var suffix = ageTier() === "simple" ? ":toddler" : ageTier() === "detail" ? ":detail" : "";
+    return "page:" + themeId + ":" + pageId + suffix;
+  }
+  /* Display thumbnail of the half-done picture for a page (or null). */
+  function wipThumbForPage(themeId, pageId) {
+    var entry = loadWipThumbs()[wipKeyFor(themeId, pageId)];
+    if (entry && entry.src && Date.now() - (entry.at || 0) <= WIP_MAX_AGE) return entry.src;
     return null;
+  }
+  /* Any in-progress thumbnail in a theme (train-cart passenger). */
+  function wipThumbFor(themeId) {
+    var thumbs = loadWipThumbs();
+    var prefix = "page:" + themeId + ":";
+    var best = null;
+    Object.keys(thumbs).forEach(function (k) {
+      if (k.indexOf(prefix) !== 0) return;
+      var e = thumbs[k];
+      if (e && e.src && Date.now() - (e.at || 0) <= WIP_MAX_AGE) {
+        if (!best || (e.at || 0) > (best.at || 0)) best = e;
+      }
+    });
+    return best ? best.src : null;
+  }
+
+  function scheduleWipSave() {
+    if (!engine || !wipPageKey || wipMuted) return;
+    if (wipSaveTimer) clearTimeout(wipSaveTimer);
+    wipSaveTimer = setTimeout(writeWip, 350);
+  }
+  function writeWip() {
+    wipSaveTimer = null;
+    if (!engine || !wipPageKey) return;
+    var map = loadWipMap();
+    var thumbs = loadWipThumbs();
+    if (engine.isBlank()) {
+      // nothing painted (fresh open, full undo, cleared): not started
+      if (map[wipPageKey] || thumbs[wipPageKey]) {
+        delete map[wipPageKey]; delete thumbs[wipPageKey];
+        saveWipMap(map); saveWipThumbs(thumbs);
+      }
+      return;
+    }
+    try {
+      var c = document.createElement("canvas");
+      c.width = WIP_STORE_SIZE; c.height = WIP_STORE_SIZE;
+      c.getContext("2d").drawImage(engine.colorCanvas, 0, 0, WIP_STORE_SIZE, WIP_STORE_SIZE);
+      map[wipPageKey] = { dataUrl: c.toDataURL("image/png"), at: Date.now() };
+      saveWipMap(map);
+    } catch (e) {}
+    if (wipPageKey !== "freedraw") {
+      try {
+        var full = engine.exportPNG();
+        var t = document.createElement("canvas");
+        t.width = 168; t.height = 168;
+        t.getContext("2d").drawImage(full, 0, 0, 168, 168);
+        thumbs[wipPageKey] = { src: t.toDataURL("image/jpeg", 0.72), at: Date.now() };
+        saveWipThumbs(thumbs);
+      } catch (e) {}
+    }
+  }
+  /* Flush a pending autosave right away (e.g. leaving the studio). */
+  function flushWipSave() {
+    if (wipSaveTimer) { clearTimeout(wipSaveTimer); writeWip(); }
+  }
+  function clearWip() {
+    if (wipSaveTimer) { clearTimeout(wipSaveTimer); wipSaveTimer = null; }
+    try { localStorage.removeItem(WIP_KEY); } catch (e) {}
+    if (!wipPageKey) return;
+    var map = loadWipMap();
+    var thumbs = loadWipThumbs();
+    if (map[wipPageKey] || thumbs[wipPageKey]) {
+      delete map[wipPageKey]; delete thumbs[wipPageKey];
+      saveWipMap(map); saveWipThumbs(thumbs);
+    }
   }
   function restoreWip() {
     if (!engine || !wipPageKey) return;
-    var raw = null;
-    try { raw = localStorage.getItem(WIP_KEY); } catch (e) {}
-    if (!raw) return;
-    try {
-      var wip = JSON.parse(raw);
-      if (!wip || wip.key !== wipPageKey || !wip.dataUrl) return;
-      if (Date.now() - (wip.at || 0) > 7 * 24 * 3600 * 1000) { clearWip(); return; } // stale
-      engine.loadPainting(wip.dataUrl);
-    } catch (e) {}
+    var entry = loadWipMap()[wipPageKey];
+    if (!entry || !entry.dataUrl) return;
+    if (Date.now() - (entry.at || 0) > WIP_MAX_AGE) { clearWip(); return; } // stale
+    engine.loadPainting(entry.dataUrl);
   }
 
   function initStudio() {
@@ -921,10 +1140,25 @@
           !pop.contains(e.target) && e.target.closest("#tool-current") === null) {
         toggleToolsPop(false);
       }
+      var spop = $("stamp-pop");
+      if (spop && !spop.classList.contains("hidden") && e.target && e.target.closest &&
+          !spop.contains(e.target) && e.target.closest("#tool-current") === null) {
+        toggleStampPop(false);
+      }
     }
     document.addEventListener("pointerdown", dismissToolsPop);
     document.addEventListener("mousedown", dismissToolsPop);
-    $("color-back").addEventListener("click", function () { show("s-pages"); });
+    // Canvas fit: refit on ANY change of the canvas area's size (rotation,
+    // browser chrome showing/hiding, rail changes) — not just window resize.
+    if (window.ResizeObserver) {
+      var wrapEl = $("canvas-wrap");
+      if (wrapEl) new ResizeObserver(function () { fitCanvas(); }).observe(wrapEl);
+    }
+    $("color-back").addEventListener("click", function () {
+      flushWipSave(); // the world screen must already show the halfway state
+      if (currentTheme) openTheme(currentTheme.id); // rebuild cards with true states
+      else enterHome();
+    });
     $("pages-back").addEventListener("click", function () { enterHome(); });
   }
 
@@ -1122,6 +1356,8 @@
 
   /* ================= boot ================= */
   function init() {
+    migrateLegacyWip();
+    preloadStamps();
     initOnboarding();
     initStudio();
     initGate();

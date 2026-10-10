@@ -36,6 +36,15 @@
         pg("wild", "kangaroo", "Kangaroo"), pg("wild", "panda", "Panda"),
         pg("wild", "hippo", "Hippo"), pg("wild", "rhino", "Rhino")
       ] },
+    { id: "halloween",   title: "Halloween",        common: true,  free: false, iconPage: "pumpkin",
+      gradient: "linear-gradient(160deg,#ff9f2e 0%,#7b2ff7 100%)",
+      pages: [
+        pg("halloween", "pumpkin", "Pumpkin"), pg("halloween", "ghost", "Ghost"),
+        pg("halloween", "witch", "Witch"), pg("halloween", "blackcat", "Black Cat"),
+        pg("halloween", "candybucket", "Candy Bucket"), pg("halloween", "hauntedhouse", "Haunted House"),
+        pg("halloween", "bat", "Bat"), pg("halloween", "owl", "Owl"),
+        pg("halloween", "mummy", "Mummy"), pg("halloween", "trickortreat", "Trick or Treat")
+      ] },
     { id: "princess",    title: "Princess Castle",  genders: ["girl"], free: false, iconPage: "princess",
       gradient: "linear-gradient(160deg,#ff9ecf 0%,#f0569d 100%)",
       pages: [
