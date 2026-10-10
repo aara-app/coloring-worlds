@@ -118,6 +118,10 @@
     this.drawing = false;
     this.lastPt = null;
     this.magicHue = 0; // rainbow cycle position for the magic brush
+    this.patternShape = "stars"; // shape trailed by the pattern brush: dots | stars | hearts
+    this._patAcc = 0; // distance accumulator for pattern-brush spacing
+    this.stampImg = null; // HTMLImageElement placed by the stamp tool
+    this.stampSize = 92; // stamp edge length in canvas px
 
     this._bindPointer();
     this.render();
@@ -138,9 +142,19 @@
       e.preventDefault();
       var p = pos(e);
       if (self.tapMode || self.tool === "fill") { self._tapFill(p.x, p.y); return; }
+      if (self.tool === "stamp") {
+        // tap-to-place: one stamp per tap, undone/redone like any stroke
+        if (!self.stampImg) return;
+        self.pushUndo();
+        self.placeStamp(p.x, p.y);
+        self.onChange();
+        try { if (window.CW_SFX) window.CW_SFX.pop(); } catch (err) {}
+        return;
+      }
       self.pushUndo();
       self.drawing = true;
       self.lastPt = p;
+      self._patAcc = 0;
       try { if (window.CW_SFX) window.CW_SFX.stroke(); } catch (err) {}
       self._strokeTo(p); // dot on tap
     });
@@ -166,6 +180,10 @@
     if (this.tool === "magic") { this._strokeMagic(p); return; }
     if (this.tool === "glitter") { this._strokeGlitter(p); return; }
     if (this.tool === "sparkle") { this._strokeSparkle(p); return; }
+    if (this.tool === "spray") { this._strokeSpray(p); return; }
+    if (this.tool === "watercolor") { this._strokeWatercolor(p); return; }
+    if (this.tool === "neon") { this._strokeNeon(p); return; }
+    if (this.tool === "pattern") { this._strokePattern(p); return; }
     if (this.tool === "crayon") { this._strokeCrayon(p); return; }
     if (this.tool === "pencil") { this._strokeFine(p, Math.max(3, Math.min(11, this.brushSize * 0.2)), 0.92); return; }
     if (this.tool === "marker") { this._strokeFine(p, this.brushSize * 1.55, 0.88); return; }
@@ -357,6 +375,162 @@
     }
     this.lastPt = p;
     this.render();
+  };
+
+  /* ---- more freehand tools: spray / watercolor / neon / pattern / stamps ----
+   * Same contract as the other brushes: paint onto colorCtx only, so undo
+   * snapshots, WIP autosave and the flattened export all include them. */
+
+  /* Spray can: soft cloud of tiny translucent particles along the stroke. */
+  ColoringEngine.prototype._strokeSpray = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var radius = Math.max(10, this.brushSize * 1.05);
+    var steps = Math.max(1, Math.floor(dist / 7));
+    ctx.fillStyle = this.color;
+    for (var i = 0; i <= steps; i++) {
+      var t = steps === 0 ? 0 : i / steps;
+      var cx = from.x + dx * t, cy = from.y + dy * t;
+      for (var k = 0; k < 16; k++) {
+        // denser in the middle: radius shrinks with sqrt(random)
+        var ang = Math.random() * Math.PI * 2;
+        var rr = Math.sqrt(Math.random()) * radius;
+        ctx.globalAlpha = 0.14 + Math.random() * 0.3;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr, 0.8 + Math.random() * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* Watercolor: very translucent wide stroke + an even softer bleed halo,
+   * so color builds up in washes where strokes overlap. */
+  ColoringEngine.prototype._strokeWatercolor = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = this.color;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    var from = this.lastPt || p;
+    var passes = [
+      { w: this.brushSize * 2.1, a: 0.05 },  // bleed halo
+      { w: this.brushSize * 1.45, a: 0.13 }  // wash body
+    ];
+    for (var i = 0; i < passes.length; i++) {
+      ctx.globalAlpha = passes[i].a;
+      ctx.lineWidth = passes[i].w;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(p.x + 0.01, p.y + 0.01);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* Neon glow: a glowing colored halo (shadow blur) + a bright hot core. */
+  ColoringEngine.prototype._strokeNeon = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    var from = this.lastPt || p;
+    function seg(w, style, blur, alpha) {
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = style;
+      ctx.lineWidth = w;
+      ctx.shadowColor = this.color;
+      ctx.shadowBlur = blur;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(p.x + 0.01, p.y + 0.01);
+      ctx.stroke();
+    }
+    seg.call(this, this.brushSize * 1.15, this.color, this.brushSize * 0.9, 0.85);
+    var rgb = hexToRgb(this.color);
+    var core = "rgb(" + Math.round(rgb[0] + (255 - rgb[0]) * 0.72) + "," +
+      Math.round(rgb[1] + (255 - rgb[1]) * 0.72) + "," +
+      Math.round(rgb[2] + (255 - rgb[2]) * 0.72) + ")";
+    seg.call(this, Math.max(3, this.brushSize * 0.36), core, this.brushSize * 0.35, 0.95);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* Heart outline path centered on (x, y), s = half-width in px. */
+  ColoringEngine.prototype._heartPath = function (ctx, x, y, s) {
+    var u = s / 16;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 10 * u);
+    ctx.bezierCurveTo(x - 16 * u, y - 4 * u, x - 9 * u, y - 16 * u, x, y - 7 * u);
+    ctx.bezierCurveTo(x + 9 * u, y - 16 * u, x + 16 * u, y - 4 * u, x, y + 10 * u);
+    ctx.closePath();
+  };
+
+  /* Pattern brush: a trail of small shapes (dots / stars / hearts) in the
+   * current color instead of a plain line, evenly spaced along the stroke. */
+  ColoringEngine.prototype._strokePattern = function (p) {
+    var ctx = this.colorCtx;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = this.color;
+    var from = this.lastPt || p;
+    var dx = p.x - from.x, dy = p.y - from.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var size = Math.max(9, Math.min(30, this.brushSize * 0.62));
+    var spacing = size * 1.25;
+    var shape = this.patternShape || "stars";
+    var self = this;
+    function stampAt(x, y) {
+      if (shape === "dots") {
+        ctx.beginPath(); ctx.arc(x, y, size * 0.5, 0, Math.PI * 2); ctx.fill();
+      } else if (shape === "hearts") {
+        self._heartPath(ctx, x, y, size * 0.72); ctx.fill();
+      } else {
+        self._sparkleStar(ctx, x, y, size * 0.72, self.color);
+      }
+    }
+    if (dist < 0.01) {
+      stampAt(p.x, p.y); // a tap (or a held-still point) still stamps once
+      this._patAcc = 0;
+    } else {
+      var travelled = spacing - this._patAcc;
+      while (travelled <= dist) {
+        var t = travelled / dist;
+        stampAt(from.x + dx * t, from.y + dy * t);
+        travelled += spacing;
+      }
+      this._patAcc = (this._patAcc + dist) % spacing;
+    }
+    this.lastPt = p;
+    this.render();
+  };
+
+  /* Stamps: place the current stamp image centered on (x, y) with a slight
+   * playful tilt. The image is drawn onto the paint layer itself. */
+  ColoringEngine.prototype.placeStamp = function (x, y) {
+    if (!this.stampImg) return;
+    var ctx = this.colorCtx;
+    var s = this.stampSize || 92;
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+    ctx.translate(x, y);
+    ctx.rotate((Math.random() - 0.5) * 0.22);
+    try { ctx.drawImage(this.stampImg, -s / 2, -s / 2, s, s); } catch (e) {}
+    ctx.restore();
+    this.render();
+  };
+
+  ColoringEngine.prototype.setStamp = function (img, sizePx) {
+    this.stampImg = img || null;
+    if (sizePx) this.stampSize = sizePx;
   };
 
   ColoringEngine.prototype._tapFill = function (x, y) {
@@ -600,6 +774,7 @@
     this.drawing = false;
     this.lastPt = null;
     this.magicHue = 0;
+    this._patAcc = 0;
     this.undoStack = [];
     this.lineImageData = null;
     this.colorCtx.globalCompositeOperation = "source-over";
@@ -612,6 +787,9 @@
   ColoringEngine.prototype.setColor = function (hex) { this.color = hex; if (this.tool === "eraser") this.tool = "marker"; };
   ColoringEngine.prototype.setTool = function (t) { this.tool = t; };
   ColoringEngine.prototype.setFillMode = function (m) { this.fillMode = m || "solid"; };
+  ColoringEngine.prototype.setPatternShape = function (s) {
+    if (s === "dots" || s === "stars" || s === "hearts") this.patternShape = s;
+  };
   ColoringEngine.prototype.setBrushSize = function (px) { this.brushSize = px; };
 
   /* Export a finished picture: white bg + paint + lines, flattened. */

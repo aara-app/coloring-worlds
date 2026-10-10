@@ -27,16 +27,21 @@ html, body { height: 100%; overscroll-behavior: none; }
 body {
   font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", "Quicksand", "Comic Sans MS", "Chalkboard SE", "Segoe UI", sans-serif;
   color: var(--ink);
+  /* one theme everywhere: the train scene's sky (sunshine glow, bright
+   * sky blue melting into soft green at the horizon) */
   background:
-    radial-gradient(circle at 12% 8%, rgba(255, 217, 61, .45) 0, transparent 34%),
-    radial-gradient(circle at 88% 12%, rgba(255, 107, 157, .38) 0, transparent 36%),
-    radial-gradient(circle at 85% 88%, rgba(77, 171, 255, .38) 0, transparent 36%),
-    radial-gradient(circle at 8% 90%, rgba(63, 220, 151, .32) 0, transparent 34%),
-    linear-gradient(155deg, #fff6e3 0%, #ffe9f2 38%, #e9f1ff 68%, #e6fbf0 100%);
+    radial-gradient(circle at 9% 4%, rgba(255, 217, 61, .55) 0, transparent 30%),
+    linear-gradient(180deg, #8fd8ff 0%, #c9efff 42%, #e8fbe9 100%);
   min-height: 100dvh;
   user-select: none; -webkit-user-select: none;
   touch-action: manipulation;
   overflow: hidden;
+}
+/* rolling green hills along the bottom of every screen, like home */
+body::after {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 104px;
+  pointer-events: none; z-index: 0; opacity: .85;
+  background: url("../assets/train/hills.png") repeat-x center bottom / auto 100%;
 }
 /* floating confetti dots, pure CSS, GPU-cheap */
 body::before {
@@ -64,11 +69,9 @@ body::before {
 /* ---------- gender-adaptive themes (set from onboarding profile) ---------- */
 body.girl {
   background:
-    radial-gradient(circle at 12% 8%, rgba(255, 217, 61, .4) 0, transparent 34%),
-    radial-gradient(circle at 88% 12%, rgba(255, 107, 157, .52) 0, transparent 36%),
-    radial-gradient(circle at 85% 88%, rgba(167, 139, 250, .45) 0, transparent 36%),
-    radial-gradient(circle at 8% 90%, rgba(255, 107, 157, .35) 0, transparent 34%),
-    linear-gradient(155deg, #fff0f6 0%, #ffe3ef 38%, #f3e8ff 68%, #ffe9f2 100%);
+    radial-gradient(circle at 9% 4%, rgba(255, 217, 61, .5) 0, transparent 30%),
+    radial-gradient(circle at 92% 10%, rgba(255, 158, 207, .28) 0, transparent 32%),
+    linear-gradient(180deg, #8fd8ff 0%, #c9efff 42%, #e8fbe9 100%);
 }
 body.girl .ob-title, body.girl .topbar-title {
   background: linear-gradient(120deg, #e14e83, #a855f7 60%, #ec4899);
@@ -76,11 +79,9 @@ body.girl .ob-title, body.girl .topbar-title {
 }
 body.boy {
   background:
-    radial-gradient(circle at 12% 8%, rgba(255, 217, 61, .35) 0, transparent 34%),
-    radial-gradient(circle at 88% 12%, rgba(77, 171, 255, .52) 0, transparent 36%),
-    radial-gradient(circle at 85% 88%, rgba(61, 220, 151, .42) 0, transparent 36%),
-    radial-gradient(circle at 8% 90%, rgba(77, 171, 255, .35) 0, transparent 34%),
-    linear-gradient(155deg, #e8f7ff 0%, #d8efff 38%, #dcfbee 68%, #e6f4ff 100%);
+    radial-gradient(circle at 9% 4%, rgba(255, 217, 61, .5) 0, transparent 30%),
+    radial-gradient(circle at 92% 10%, rgba(77, 171, 255, .3) 0, transparent 32%),
+    linear-gradient(180deg, #8fd8ff 0%, #c9efff 42%, #e8fbe9 100%);
 }
 body.boy .ob-title, body.boy .topbar-title {
   background: linear-gradient(120deg, #2f8fe0, #0ea5a5 60%, #2563eb);
@@ -124,7 +125,7 @@ body.boy .ob-title, body.boy .topbar-title {
 .welcome-cta:active { transform: scale(.94); }
 
 /* ---------- age picker (Bimi Boo style: clean white, animal circles) ---------- */
-#s-ob2.age-screen { background: linear-gradient(180deg, #fff8ec 0%, #fffdf6 55%, #fdf3ff 100%); }
+#s-ob2.age-screen { background: linear-gradient(180deg, #a5e0ff 0%, #d8f4ff 55%, #e8fbe9 100%); }
 .age-wrap { max-width: 560px; margin: 0 auto; min-height: 100dvh; position: relative; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px) + 4dvh) 18px calc(env(safe-area-inset-bottom, 0px) + 16px); }
 .age-skip {
   position: absolute; top: 0; right: 0; border: none; background: none; cursor: pointer;
@@ -164,13 +165,13 @@ body.boy .ob-title, body.boy .topbar-title {
 .ob-wrap { max-width: 600px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 3dvh) 18px calc(env(safe-area-inset-bottom, 0px) + 16px); text-align: center; position: relative; }
 .ob-kicker {
   display: inline-block; color: #fff; font-size: 14px; font-weight: 700;
-  background: linear-gradient(180deg, var(--purple), var(--purple-dark));
+  background: linear-gradient(180deg, var(--blue), var(--blue-dark));
   padding: 8px 20px; border-radius: 999px; margin-bottom: 14px;
   box-shadow: 0 4px 0 rgba(58, 46, 63, .15); letter-spacing: .3px;
 }
 .ob-title {
   font-size: clamp(32px, 7.5vw, 46px); line-height: 1.12; margin-bottom: 26px; font-weight: 900;
-  background: linear-gradient(120deg, var(--pink-dark), var(--purple-dark) 55%, var(--blue-dark));
+  background: linear-gradient(120deg, #1c6fb8, #0ea5a5 55%, var(--blue-dark));
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 0 rgba(255, 255, 255, .65));
 }
@@ -229,12 +230,12 @@ body.boy .ob-title, body.boy .topbar-title {
   transition: transform .12s ease, border-color .15s ease, background .15s ease;
 }
 .interest-btn:active { transform: scale(.93); }
-.interest-btn.sel { border-color: var(--purple); background: linear-gradient(180deg, #fff, var(--purple-soft)); animation: pop .3s ease; }
+.interest-btn.sel { border-color: var(--blue); background: linear-gradient(180deg, #fff, var(--blue-soft)); animation: pop .3s ease; }
 .interest-btn img { width: 88px; height: 88px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(58, 46, 63, .18)); }
 .cta-btn {
   border: none; cursor: pointer; font-family: inherit; font-size: 25px; font-weight: 900;
-  color: #fff; background: linear-gradient(180deg, #ff8fb5, var(--pink-dark));
-  border-radius: 999px; padding: 18px 48px; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 7px 0 rgba(160, 40, 90, .35), 0 14px 28px rgba(255, 107, 157, .35);
+  color: #fff; background: linear-gradient(180deg, #6fc0ff, var(--blue-dark));
+  border-radius: 999px; padding: 18px 48px; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 7px 0 rgba(30, 90, 150, .35), 0 14px 28px rgba(77, 171, 255, .35);
   min-height: 74px; text-shadow: 0 2px 0 rgba(0, 0, 0, .12);
   transition: transform .12s ease;
 }
@@ -262,7 +263,7 @@ body.boy .ob-title, body.boy .topbar-title {
 }
 .topbar-title {
   font-size: 30px; font-weight: 900; flex: 1;
-  background: linear-gradient(120deg, var(--pink-dark), var(--purple-dark));
+  background: linear-gradient(120deg, #1c6fb8, #0ea5a5);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 .topbar-spacer { width: 54px; }
@@ -407,7 +408,7 @@ body.boy .ob-title, body.boy .topbar-title {
 .size-pop {
   position: fixed; right: 96px; top: 42%; z-index: 60;
   display: flex; flex-direction: column; gap: 10px; padding: 12px;
-  background: #fff; border-radius: 22px; border: 3px solid var(--purple-soft);
+  background: #fff; border-radius: 22px; border: 3px solid var(--blue-soft);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .28); animation: pop .25s ease;
 }
 .size-pop.hidden { display: none; }
@@ -415,7 +416,7 @@ body.boy .ob-title, body.boy .topbar-title {
 .fx-pop {
   position: fixed; right: 96px; top: 42%; z-index: 60;
   display: flex; flex-direction: column; gap: 10px; padding: 14px;
-  background: #fff; border-radius: 22px; border: 3px solid var(--purple-soft);
+  background: #fff; border-radius: 22px; border: 3px solid var(--blue-soft);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .28); animation: pop .25s ease;
   min-width: 172px;
 }
@@ -423,7 +424,7 @@ body.boy .ob-title, body.boy .topbar-title {
 .fx-btn {
   position: relative; border: none; cursor: pointer; font-family: inherit;
   display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-  background: linear-gradient(180deg, #f7f1fb, #ece2f6); border-radius: 16px;
+  background: linear-gradient(180deg, #f2f9ff, #dcefff); border-radius: 16px;
   box-shadow: 0 3px 0 rgba(58, 46, 63, .1); transition: transform .12s ease;
   font-size: 17px; font-weight: 800; color: var(--ink); text-align: left;
 }
@@ -442,7 +443,7 @@ body.boy .ob-title, body.boy .topbar-title {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35));
 }
 .size-btn {
-  border: none; background: linear-gradient(180deg, #f7f1fb, #ece2f6); cursor: pointer;
+  border: none; background: linear-gradient(180deg, #f2f9ff, #dcefff); cursor: pointer;
   width: 50px; height: 50px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 0 rgba(58, 46, 63, .1); transition: transform .12s ease;
@@ -458,20 +459,21 @@ body.boy .ob-title, body.boy .topbar-title {
 .modal.hidden { display: none; }
 .modal-card {
   background: #fff; border-radius: 32px; padding: 32px 28px; max-width: 430px; width: 100%;
-  text-align: center; box-shadow: 0 16px 48px rgba(0, 0, 0, .3); border: 5px solid var(--purple-soft);
+  text-align: center; box-shadow: 0 16px 48px rgba(0, 0, 0, .3); border: 5px solid var(--blue-soft);
   animation: pop .35s cubic-bezier(.22, 1.6, .36, 1);
+  max-height: calc(100dvh - 24px); overflow-y: auto;
 }
 .modal-card h2 { font-size: 28px; font-weight: 900; margin-bottom: 10px; }
 .modal-card p { color: var(--ink-soft); font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 #gate-hold {
   border: none; cursor: pointer; font-family: inherit; font-size: 23px; font-weight: 900; color: #fff;
-  background: linear-gradient(180deg, #bb9cfc, var(--purple-dark)); border-radius: 999px; padding: 19px 40px;
+  background: linear-gradient(180deg, #6fc0ff, var(--blue-dark)); border-radius: 999px; padding: 19px 40px;
   width: 100%; user-select: none; -webkit-user-select: none; touch-action: none;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 6px 0 rgba(90, 60, 160, .35); text-shadow: 0 2px 0 rgba(0, 0, 0, .12);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 6px 0 rgba(30, 90, 150, .35); text-shadow: 0 2px 0 rgba(0, 0, 0, .12);
 }
 #gate-hold:active { transform: scale(.97); }
 .gate-progress { height: 14px; background: #efe8fa; border-radius: 999px; margin: 18px 0 8px; overflow: hidden; }
-#gate-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--purple), var(--pink)); border-radius: 999px; }
+#gate-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), var(--mint)); border-radius: 999px; }
 .link-btn { border: none; background: none; cursor: pointer; color: var(--blue-dark); font-size: 18px; font-weight: 700; font-family: inherit; text-decoration: underline; padding: 12px; margin-top: 6px; }
 .modal-x {
   position: absolute; top: 8px; right: 10px; border: none; background: none; cursor: pointer;
@@ -504,7 +506,7 @@ body.boy .ob-title, body.boy .topbar-title {
 
 /* ---------- parent-gate number pad ---------- */
 .numpad-card {
-  background: linear-gradient(180deg, #7aa8ff 0%, #9a7bff 100%);
+  background: linear-gradient(180deg, #6ec1ff 0%, #4dabff 100%);
   border: 5px solid rgba(255, 255, 255, .7);
 }
 .numpad-card h2 { color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
@@ -583,7 +585,7 @@ body.boy .ob-title, body.boy .topbar-title {
 }
 #s-home .home-footer {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 8;
-  flex-direction: row; justify-content: space-between; align-items: flex-end;
+  flex-direction: row; justify-content: space-between; align-items: center;
   padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
   pointer-events: none;
 }
@@ -600,15 +602,19 @@ body.boy .ob-title, body.boy .topbar-title {
   background: linear-gradient(180deg, #8fd8ff 0%, #c9efff 42%, #e8fbe9 100%);
 }
 .ts-sun {
-  position: absolute; top: 10px; left: 12px; width: 86px; height: 86px; z-index: 2;
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 86px); left: 14px; width: 78px; height: 78px; z-index: 2;
   background: url("../assets/train/sun.png") center / contain no-repeat;
   filter: drop-shadow(0 0 16px rgba(255, 205, 40, .55));
   animation: floaty 4s ease-in-out infinite;
 }
+/* ONE whole rainbow: the arc (with its own clouds at both feet) sits fully
+ * inside the sky, inset from every edge, below the top row — never clipped,
+ * never crossed by UI. Parallax drift is applied by the train loop. */
 .ts-rainbow {
-  position: absolute; top: 2px; right: 3%; width: 320px; height: 144px; z-index: 1;
-  background: url("../assets/train/rainbow.png") center top / contain no-repeat;
-  opacity: .92; pointer-events: none;
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 62px); right: 4%;
+  width: min(340px, 86vw); aspect-ratio: 1150 / 517; z-index: 1;
+  background: url("../assets/train/rainbow.png") center / contain no-repeat;
+  opacity: .95; pointer-events: none;
 }
 .ts-layer { position: absolute; left: 0; right: 0; pointer-events: none; background-repeat: repeat-x; }
 .ts-clouds {
@@ -635,11 +641,19 @@ body.boy .ob-title, body.boy .topbar-title {
     linear-gradient(180deg, #7a4d21 0 6px, #5d3a16 6px 11px, transparent 11px),
     repeating-linear-gradient(90deg, #9c6a30 0 20px, transparent 20px 74px);
 }
-.train > .engine, .train > .cart { animation: trainbob 2.3s ease-in-out infinite alternate; }
-.train > .cart:nth-child(odd) { animation-delay: .35s; }
-.train > .cart:nth-child(3n) { animation-delay: .7s; }
-@keyframes trainbob { from { transform: translateY(0); } to { transform: translateY(-3px); } }
-.train-scene.traveling .train > .engine, .train-scene.traveling .train > .cart { animation-duration: .45s; }
+/* Motion design: at REST the train is perfectly still (no idle bob — it
+ * read as a shake). The gentle bounce exists only while the train is
+ * actually rolling (drag/scroll) or travelling into a world; the loop
+ * toggles .rolling from the real scroll velocity. */
+.train-scene.rolling .train > .engine, .train-scene.rolling .train > .cart,
+.train-scene.traveling .train > .engine, .train-scene.traveling .train > .cart {
+  animation: trainbob .55s ease-in-out infinite alternate;
+}
+.train-scene.rolling .train > .cart:nth-child(odd),
+.train-scene.traveling .train > .cart:nth-child(odd) { animation-delay: .12s; }
+.train-scene.rolling .train > .cart:nth-child(3n),
+.train-scene.traveling .train > .cart:nth-child(3n) { animation-delay: .24s; }
+@keyframes trainbob { from { transform: translateY(0); } to { transform: translateY(-2.5px); } }
 
 /* wheels: illustrated PNGs (spin via --wrot set from scroll position) */
 .wheel {
@@ -678,7 +692,11 @@ body.boy .ob-title, body.boy .topbar-title {
 .cart-scene img {
   width: 100%; height: auto; display: block;
   filter: drop-shadow(0 5px 5px rgba(58, 46, 63, .22));
-  animation: riderbounce 2.6s ease-in-out infinite alternate;
+}
+/* riders bounce only while the train is moving, with the train */
+.train-scene.rolling .cart-scene img,
+.train-scene.traveling .cart-scene img {
+  animation: riderbounce 1.3s ease-in-out infinite alternate;
 }
 @keyframes riderbounce { from { transform: translateY(0); } to { transform: translateY(-4px); } }
 .cart-name {
@@ -695,20 +713,17 @@ body.boy .ob-title, body.boy .topbar-title {
 }
 .cart-wheels .wheel:nth-child(1) { left: 30px; }
 .cart-wheels .wheel:nth-child(2) { right: 30px; }
-.cart-cover {
-  position: absolute; left: 0; right: 0; top: 2px; bottom: 16px; z-index: 4;
-  border-radius: 22px; transform: rotate(-1.2deg);
-  background: repeating-linear-gradient(45deg, #cfc6ea 0 20px, #beb2df 20px 40px);
-  border: 3px dashed rgba(255, 255, 255, .9);
-  box-shadow: 0 6px 14px rgba(58, 46, 63, .18);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-}
-.cover-lock {
-  width: 66px; height: 66px;
+/* locked worlds: the cart art stays FULLY visible — the only signal is
+ * one small gold lock badge in a white circle at the cart's top corner,
+ * the way the big kids' apps do it */
+.cart-lock-badge {
+  position: absolute; top: 2px; right: 8px; width: 44px; height: 44px; z-index: 5;
+  background: #ffffff; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, .35));
+  box-shadow: 0 3px 8px rgba(58, 46, 63, .3), inset 0 -2px 0 rgba(58, 46, 63, .08);
+  pointer-events: none;
 }
-.cover-zzz { font-weight: 900; color: #5b4a86; font-size: 15px; letter-spacing: 3px; }
+.cart-lock-badge img { width: 27px; height: 27px; object-fit: contain; display: block; }
 .cart.shake-it { animation: cartshake .45s ease; }
 @keyframes cartshake {
   0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); }
@@ -717,11 +732,15 @@ body.boy .ob-title, body.boy .topbar-title {
 .puff-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
 .puff { position: absolute; border-radius: 50%; filter: blur(3px); opacity: .8; pointer-events: none; }
 .train-hint {
-  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 68px); right: 14px; z-index: 6;
+  position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; max-width: 92vw;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); z-index: 6;
   background: rgba(35, 18, 48, .55); color: #fff; font-size: 14.5px; font-weight: 800;
   padding: 8px 18px; border-radius: 999px; pointer-events: none; white-space: nowrap;
   animation: floaty 2.6s ease-in-out infinite;
+  transition: opacity .5s ease;
 }
+/* retired after the child's first real drag (or first ride) */
+.train-hint.hint-hide { opacity: 0; animation: none; }
 
 /* ================= WORLD SCREEN ================= */
 .world-title {
@@ -750,6 +769,15 @@ body.boy .ob-title, body.boy .topbar-title {
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .35));
 }
 .done-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* halfway state: the card shows the real half-colored picture plus this
+ * small crayon badge in a white circle (same corner as the done star) */
+.wip-badge {
+  position: absolute; top: 6px; left: 6px; width: 40px; height: 40px; z-index: 2;
+  background: #ffffff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 7px rgba(0, 0, 0, .3), inset 0 0 0 2.5px var(--orange);
+}
+.wip-badge img { width: 25px; height: 25px; object-fit: contain; display: block; }
 .world-hint {
   text-align: center; color: rgba(255, 255, 255, .95); font-size: 15.5px; font-weight: 800;
   text-shadow: 0 2px 4px rgba(0, 0, 0, .25); margin-top: 2px;
@@ -758,19 +786,27 @@ body.boy .ob-title, body.boy .topbar-title {
 }
 
 /* ================= TOOL PICKER POPUP ================= */
+/* a proper big grid: every tool with its illustrated icon AND its name,
+ * so the whole toolbox is visible at a glance */
 .tools-pop {
   position: fixed; right: 100px; top: 50%; transform: translateY(-50%); z-index: 60;
-  width: 256px; padding: 14px;
-  background: #fff; border-radius: 24px; border: 3px solid var(--purple-soft);
+  width: min(408px, calc(100vw - 112px)); padding: 14px;
+  max-height: calc(100dvh - 20px); overflow-y: auto; scrollbar-width: none;
+  background: #fff; border-radius: 24px; border: 3px solid var(--blue-soft);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .28); animation: pop .25s ease;
 }
+.tools-pop::-webkit-scrollbar { display: none; }
 .tools-pop.hidden { display: none; }
-.tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.tools-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.stamp-pop { width: min(330px, calc(100vw - 112px)); }
+.stamp-pop-title {
+  text-align: center; font-size: 19px; font-weight: 900; color: var(--ink); margin: 2px 0 10px;
+}
 .tool-btn {
   position: relative; border: none; cursor: pointer; font-family: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 10px 6px 8px; border-radius: 16px;
-  background: linear-gradient(180deg, #f7f1fb, #ece2f6);
+  background: linear-gradient(180deg, #f2f9ff, #dcefff);
   box-shadow: 0 3px 0 rgba(58, 46, 63, .1);
   font-size: 15px; font-weight: 800; color: var(--ink);
   transition: transform .12s ease;
@@ -797,13 +833,13 @@ body.boy .ob-title, body.boy .topbar-title {
 .color-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 2px 0 14px; }
 .ctab {
   border: none; cursor: pointer; font-family: inherit; font-size: 17px; font-weight: 800;
-  color: var(--ink-soft); background: #f1eaf9; padding: 10px 18px; border-radius: 999px;
+  color: var(--ink-soft); background: #e3f1fd; padding: 10px 18px; border-radius: 999px;
   transition: transform .12s ease;
 }
 .ctab:active { transform: scale(.93); }
 .ctab.sel {
-  background: linear-gradient(180deg, var(--purple), var(--purple-dark)); color: #fff;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .4), 0 4px 0 rgba(90, 60, 160, .3);
+  background: linear-gradient(180deg, var(--blue), var(--blue-dark)); color: #fff;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .4), 0 4px 0 rgba(30, 90, 150, .3);
 }
 .color-pane.hidden { display: none; }
 .color-grid { grid-template-columns: repeat(8, 1fr); gap: 9px; }
@@ -819,7 +855,7 @@ body.boy .ob-title, body.boy .topbar-title {
 .magic-sw {
   position: relative; border: none; cursor: pointer; font-family: inherit;
   display: flex; align-items: center; gap: 14px; padding: 10px 14px;
-  background: linear-gradient(180deg, #f7f1fb, #ece2f6); border-radius: 18px;
+  background: linear-gradient(180deg, #f2f9ff, #dcefff); border-radius: 18px;
   box-shadow: 0 3px 0 rgba(58, 46, 63, .1); transition: transform .12s ease;
   font-size: 19px; font-weight: 800; color: var(--ink); text-align: left;
 }
@@ -887,11 +923,46 @@ body.boy .ob-title, body.boy .topbar-title {
   .world-row .page-card { width: min(25dvh, 150px); border-width: 4px; }
   .world-row .page-card .ptitle { font-size: 13px; padding: 4px 4px 6px; }
   .world-hint { font-size: 13px; }
-  /* tool picker fits a short screen */
-  .tools-pop { width: 236px; padding: 11px; }
-  .tool-btn { padding: 7px 4px 6px; font-size: 13px; gap: 2px; }
-  .tool-ico { width: 36px; height: 36px; }
-  .tool-ico img { width: 30px; height: 30px; }
-  .tools-sizes { margin-top: 9px; }
-  .size-btn { width: 42px; height: 42px; }
+  /* tool picker fits a short screen: still the full named grid */
+  .tools-pop { width: min(372px, calc(100vw - 108px)); padding: 9px; }
+  .tools-grid { gap: 6px; }
+  .tool-btn { padding: 4px 3px 3px; font-size: 11.5px; gap: 1px; border-radius: 13px; }
+  .tool-ico { width: 30px; height: 30px; }
+  .tool-ico img { width: 25px; height: 25px; }
+  .tools-sizes { margin-top: 6px; }
+  .size-btn { width: 36px; height: 36px; }
+  .stamp-pop-title { font-size: 16px; margin-bottom: 7px; }
+  /* studio rail compacts so EVERY control fits a short landscape screen:
+   * done, save, tool, color, eraser, undo, trash — nothing clipped */
+  .side-tools { width: 76px; gap: 4px; padding-top: calc(env(safe-area-inset-top, 0px) + 6px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); }
+  .side-btn { width: 45px; height: 45px; }
+  .side-btn img { width: 31px; height: 31px; }
+  .side-btn.tool-current, .side-btn.color-dot { width: 54px; height: 54px; }
+  .side-btn.tool-current img { width: 38px; height: 38px; }
+  .color-dot-inner { width: 40px; height: 40px; }
+  /* home sky furniture shrinks to stay inside the short sky */
+  .ts-rainbow { width: 300px; top: calc(env(safe-area-inset-top, 0px) + 58px); }
+  .ts-sun { width: 58px; height: 58px; top: calc(env(safe-area-inset-top, 0px) + 72px); }
+  .train-hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); font-size: 13px; padding: 6px 14px; }
+  /* parent-gate numpad fits a short landscape screen */
+  .numpad-card { padding: 18px 20px; }
+  .numpad-card h2 { font-size: 22px; margin-bottom: 6px; }
+  .numpad-answer { font-size: 26px; min-height: 54px; padding: 9px 8px; margin-bottom: 12px; }
+  .numpad { gap: 8px; }
+  .numpad button { font-size: 24px; padding: 8px 0; border-radius: 15px; }
+  #gate-hold { padding: 13px 30px; font-size: 20px; }
+  .modal-card h2 { font-size: 24px; }
+  .gate-ico { width: 46px; height: 46px; }
+}
+
+/* narrow portrait phones: the home top row stays one tidy line */
+@media (max-width: 520px) and (orientation: portrait) {
+  #s-home .topbar { gap: 8px; padding-left: 10px; padding-right: 10px; }
+  #s-home .topbar-title { font-size: 20px; padding: 8px 14px; }
+  #s-home .icon-btn { width: 48px; height: 48px; }
+  #s-home .icon-btn img { width: 29px; height: 29px; }
+  .unlock-pill { font-size: 14px; padding: 10px 13px; gap: 5px; }
+  .unlock-pill img { width: 18px; height: 18px; }
+  #s-home .grown-link { font-size: 13.5px; padding: 9px 12px; }
+  .cta-btn.secondary { font-size: 18px; padding: 12px 26px; min-height: 54px; }
 }
