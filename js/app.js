@@ -16,7 +16,6 @@
   var engine = null;
   var currentTheme = null;
   var currentPage = null;      // page open in the studio (null = free draw)
-  var studioTapMode = false;   // true while a 0-2 profile is in the studio
   var fillModeSel = "solid";   // chosen fill style: solid | rainbow | dots | stars | stripes
   var obState = { gender: null, age: null, interests: [] };
 
@@ -895,46 +894,36 @@
     wipMuted = true; // engine resets/loads fire onChange — not user painting
     $("color-title").textContent = page ? page.title : "Free Draw";
     show("s-color");
-    var tapMode = profile && profile.age === "0-2";
-    studioTapMode = !!tapMode;
     // line art for the child's age tier (simple / regular / detail)
     var artFile = page ? tierFile(page) : null;
 
     // NEVER remove the canvas element from the DOM — reuse it across opens.
     // Create the engine once, then reset its state for each new page.
+    // The studio is the SAME for every age (Raji, 2026-10-10): full tool
+    // rail, all 13 tools, eraser, and every palette tab — only the art
+    // tier differs by age. No toddler tap-mode or hidden controls.
     var cv = $("color-canvas");
     if (!engine) {
       engine = new window.CW_COLOR.ColoringEngine(cv, {
-        tapMode: tapMode,
-        defaultTool: tapMode ? "fill" : "marker",
+        defaultTool: "marker",
         defaultColor: currentColor,
-        defaultBrush: tapMode ? 40 : 26,
+        defaultBrush: 26,
         onChange: function () { scheduleWipSave(); refreshRail(); },
         onFill: function (x, y) { sparkleBurst(x, y); }
       });
     } else {
       engine.reset({
-        tapMode: tapMode,
-        defaultTool: tapMode ? "fill" : "marker",
+        defaultTool: "marker",
         defaultColor: currentColor,
-        defaultBrush: tapMode ? 40 : 26
+        defaultBrush: 26
       });
     }
     engine.setFillMode(fillModeSel);
     setColorDot();
-    setToolUI(tapMode ? "fill" : "marker");
+    setToolUI("marker");
     toggleToolsPop(false);
     toggleStampPop(false);
     refreshRail();
-
-    // age-adaptive toolbar: toddlers only get tap-to-fill solids —
-    // no tool picker, no eraser, no magic/glitter/pattern tabs.
-    var toolsBtn = $("tool-current");
-    if (toolsBtn) toolsBtn.style.display = tapMode ? "none" : "";
-    var eraserBtn = $("tool-eraser");
-    if (eraserBtn) eraserBtn.style.display = tapMode ? "none" : "";
-    var tabs = $("color-tabs");
-    if (tabs) tabs.style.display = tapMode ? "none" : "";
 
     // WIP key for autosave: unique per page + art tier variant
     wipPageKey = page && currentTheme ? wipKeyFor(currentTheme.id, page.id) : "freedraw";
@@ -1113,7 +1102,7 @@
     });
     $("btn-color").addEventListener("click", function () {
       sfx("tap");
-      showColorTab(studioTapMode ? "solids" : colorTab);
+      showColorTab(colorTab);
       $("color-modal").classList.remove("hidden");
     });
     document.querySelectorAll("#color-tabs .ctab").forEach(function (b) {
