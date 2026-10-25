@@ -29,7 +29,7 @@ public class GallerySavePlugin extends Plugin {
     public void saveImage(PluginCall call) {
         String base64 = call.getString("base64");
         String filename = call.getString("filename", "coloring-" + System.currentTimeMillis() + ".png");
-        String album = call.getString("album", "Coloring Worlds");
+        String album = call.getString("album", "Coloring Cart");
         if (base64 == null) {
             call.reject("Missing base64 image data");
             return;

@@ -1,4 +1,4 @@
-/* Coloring Worlds — app controller: onboarding, navigation, parent gate, save */
+/* Coloring Cart — app controller: onboarding, navigation, parent gate, save */
 (function () {
   "use strict";
 
@@ -10,6 +10,42 @@
 
   function isUnlocked() {
     try { return localStorage.getItem(LS_UNLOCKED) === "1"; } catch (e) { return false; }
+  }
+  /* Entitlement cache: purchases.js confirms store ownership and calls
+   * setUnlocked(true) — the flag itself stays the single source the UI
+   * reads (worlds, palette, tools all check isUnlocked()). */
+  function setUnlocked(v) {
+    try {
+      if (v) localStorage.setItem(LS_UNLOCKED, "1");
+      else localStorage.removeItem(LS_UNLOCKED);
+    } catch (e) {}
+    refreshUnlockUI();
+  }
+  function refreshUnlockUI() {
+    var unlocked = isUnlocked();
+    var pill = $("btn-unlock-home");
+    if (pill) pill.style.display = unlocked ? "none" : "";
+    var btn = $("btn-unlock");
+    if (btn) {
+      btn.textContent = unlocked ? "Unlocked — thank you!" : "Unlock Everything — $4.99";
+      btn.disabled = !!unlocked;
+    }
+  }
+  /* The parent gate (hold 3s + math) is the one door to purchases and
+   * settings. Kids who tap anything locked land here via promptUnlock. */
+  function openParentGate() {
+    stopHold();
+    var bar = $("gate-bar");
+    if (bar) { bar.style.transition = "none"; bar.style.width = "0%"; }
+    $("gate-modal").classList.remove("hidden");
+  }
+  function promptUnlock(msg) {
+    closeColorModal();
+    toggleToolsPop(false);
+    toggleStampPop(false);
+    sfx("error");
+    toast(msg || "Ask a grown-up to unlock!");
+    openParentGate();
   }
 
   var profile = loadProfile();
@@ -176,8 +212,9 @@
     return tierThumb(p);
   }
   /* ================= home: the coloring train =================
-   * Engine + one cart per world. Kids drag the train sideways; tapping an
-   * unlocked cart makes the train "travel" into that world. Finished
+   * Engine + one cart per world. Kids drag the train sideways; tapping a
+   * cart makes the train "travel" into that world (locked worlds too —
+   * looking is free, coloring is what's gated). Finished
    * pictures ride in the carts as tiny passengers. */
   var WHEEL_IMG = '<img class="wheel" src="assets/train/wheel.png" alt="">';
   var WHEEL_IMG_BIG = '<img class="wheel w-big" src="assets/train/wheel.png" alt="">';
@@ -199,7 +236,7 @@
   function buildCart(t, locked) {
     var cart = document.createElement("button");
     cart.className = "cart" + (locked ? " locked" : "");
-    cart.setAttribute("aria-label", t.title + (locked ? " (locked)" : ""));
+    cart.setAttribute("aria-label", t.title + (locked ? " (locked — tap to look inside)" : ""));
     var scene = document.createElement("span");
     scene.className = "cart-scene";
     var simg = document.createElement("img");
@@ -235,11 +272,8 @@
     wheels.innerHTML = WHEEL_IMG + WHEEL_IMG;
     cart.appendChild(wheels);
     cart.addEventListener("click", function () {
-      if (locked) {
-        sfx("error");
-        toast("Ask a grown-up to unlock!");
-        return;
-      }
+      // Locked worlds OPEN like any other — kids can look at every
+      // picture inside. Only coloring is gated (see openTheme).
       travelTo(t, cart);
     });
     return cart;
@@ -404,6 +438,12 @@
     var scr = $("s-pages");
     scr.style.background = currentTheme.gradient;
     $("pages-title").textContent = currentTheme.title;
+    var worldHint = document.querySelector("#s-pages .world-hint");
+    if (worldHint) {
+      worldHint.innerHTML = themeLocked
+        ? "Look at all the pictures! Coloring needs a grown-up unlock."
+        : "Swipe the pictures &#8596; tap one to color it!";
+    }
     var pm = $("pages-mascot");
     if (pm) pm.src = "assets/train/cart-" + currentTheme.id + ".png";
     var fin = loadFinished();
@@ -445,7 +485,7 @@
       label.textContent = p.title;
       card.appendChild(label);
       card.addEventListener("click", function () {
-        if (themeLocked) { sfx("error"); toast("Ask a grown-up to unlock!"); return; }
+        if (themeLocked) { promptUnlock("This world is locked — a grown-up can unlock it!"); return; }
         sfx("tap");
         card.classList.add("sel");
         setTimeout(function () { openColor(p); }, 140);
@@ -546,7 +586,7 @@
       if (hex === currentColor && fillModeSel === "solid" && !locked) b.classList.add("sel");
       if (locked) b.appendChild(lockVeil());
       b.addEventListener("click", function () {
-        if (locked) { sfx("error"); toast("Unlock for more colors!"); return; }
+        if (locked) { promptUnlock("Unlock for more colors!"); return; }
         pickSolid(hex);
       });
       grid.appendChild(b);
@@ -565,7 +605,7 @@
       b.innerHTML = '<span class="magic-chip" style="background:' + bg + '"></span><span class="magic-label">' + label + "</span>";
       if (!unlocked) b.appendChild(lockVeil());
       b.addEventListener("click", function () {
-        if (!unlocked) { sfx("error"); toast("Unlock for magic colors!"); return; }
+        if (!unlocked) { promptUnlock("Unlock for magic colors!"); return; }
         applyFillStyle(id);
       });
       list.appendChild(b);
@@ -588,7 +628,7 @@
       if (fillModeSel === "glitter" && currentColor === hex && unlocked) b.classList.add("sel");
       if (!unlocked) b.appendChild(lockVeil());
       b.addEventListener("click", function () {
-        if (!unlocked) { sfx("error"); toast("Unlock for glitter colors!"); return; }
+        if (!unlocked) { promptUnlock("Unlock for glitter colors!"); return; }
         currentColor = hex;
         if (engine) engine.setColor(hex);
         applyFillStyle("glitter");
@@ -615,7 +655,7 @@
         '<img src="' + pd.icon + '" alt=""></span><span class="magic-label">' + pd.label + "</span>";
       if (!unlocked) b.appendChild(lockVeil());
       b.addEventListener("click", function () {
-        if (!unlocked) { sfx("error"); toast("Unlock for pattern fills!"); return; }
+        if (!unlocked) { promptUnlock("Unlock for pattern fills!"); return; }
         applyFillStyle(pd.id);
       });
       list.appendChild(b);
@@ -790,7 +830,7 @@
       b.innerHTML = '<span class="tool-ico"><img src="' + td.icon + '" alt=""></span><span>' + td.label + "</span>" +
         (td.premium && !unlocked ? '<span class="fx-lock">' + LOCK_SVG + "</span>" : "");
       b.addEventListener("click", function () {
-        if (td.premium && !unlocked) { sfx("error"); toast("Unlock for magic tools!"); return; }
+        if (td.premium && !unlocked) { promptUnlock("Unlock for magic tools!"); return; }
         pickTool(td.id);
         toggleToolsPop(false);
         if (td.id === "stamp") toggleStampPop(true); // choose which stamp to place
@@ -1193,15 +1233,15 @@
 
   function saveNative(dataUrl) {
     var plugins = (window.Capacitor && window.Capacitor.Plugins) || {};
-    var filename = "coloring-worlds-" + Date.now() + ".png";
+    var filename = "coloring-cart-" + Date.now() + ".png";
     // Preferred: GallerySave native plugin -> straight into the photo album
     if (plugins.GallerySave && plugins.GallerySave.saveImage) {
-      return plugins.GallerySave.saveImage({ base64: dataUrl, filename: filename, album: "Coloring Worlds" });
+      return plugins.GallerySave.saveImage({ base64: dataUrl, filename: filename, album: "Coloring Cart" });
     }
     // Fallback: Filesystem plugin to shared storage
     if (plugins.Filesystem && plugins.Filesystem.writeFile) {
       return plugins.Filesystem.writeFile({
-        path: "Pictures/ColoringWorlds/" + filename,
+        path: "Pictures/ColoringCart/" + filename,
         data: dataUrl.split(",")[1],
         directory: "EXTERNAL_STORAGE"
       });
@@ -1214,7 +1254,7 @@
       try {
         var a = document.createElement("a");
         a.href = dataUrl;
-        a.download = "coloring-worlds-" + Date.now() + ".png";
+        a.download = "coloring-cart-" + Date.now() + ".png";
         document.body.appendChild(a);
         a.click();
         setTimeout(function () { a.remove(); resolve(); }, 600);
@@ -1238,13 +1278,59 @@
     paint();
   }
 
+  /* ================= purchases (real store wiring) =================
+   * The store work lives in js/purchases.js (cordova-plugin-purchase).
+   * These wrappers translate store results into toasts + the cached
+   * entitlement flag. On web/preview there is no store: graceful toast,
+   * nothing breaks. */
+  function purchaseUnlock() {
+    if (isUnlocked()) { toast("Already unlocked — enjoy!"); return; }
+    var P = window.CC_Purchases;
+    if (!P || typeof P.purchase !== "function") {
+      toast("Purchases work in the App Store version");
+      return;
+    }
+    toast("Opening the store…");
+    P.purchase().then(function (res) {
+      if (res && res.ok) {
+        setUnlocked(true);
+        sfx("fanfare");
+        toast("Unlocked! Everything is open.");
+        enterHome();
+      } else if (res && res.status === "cancelled") {
+        toast("Purchase cancelled");
+      } else if (res && res.status === "unavailable") {
+        toast("Purchases work in the App Store version");
+      } else {
+        toast("Purchase didn't go through — please try again");
+      }
+    }).catch(function () { toast("Purchase didn't go through — please try again"); });
+  }
+  function restorePurchases() {
+    var P = window.CC_Purchases;
+    if (!P || typeof P.restore !== "function") {
+      toast(isUnlocked() ? "Already unlocked on this device" : "Nothing to restore yet");
+      return;
+    }
+    toast("Checking your purchases…");
+    P.restore().then(function (res) {
+      if (res && res.unlocked) {
+        setUnlocked(true);
+        sfx("fanfare");
+        toast("Restored — everything is open!");
+        enterHome();
+      } else if (res && res.status === "unavailable") {
+        toast(isUnlocked() ? "Already unlocked on this device" : "Restore works in the App Store version");
+      } else {
+        toast("Nothing to restore yet");
+      }
+    }).catch(function () { toast("Nothing to restore yet"); });
+  }
+
   /* ================= parent gate ================= */
   var holdTimer = null, holdStart = 0;
   function initGate() {
-    $("btn-grown").addEventListener("click", function () {
-      $("gate-modal").classList.remove("hidden");
-      $("gate-bar").style.width = "0%";
-    });
+    $("btn-grown").addEventListener("click", function () { openParentGate(); });
     $("gate-cancel").addEventListener("click", function () { $("gate-modal").classList.add("hidden"); stopHold(); });
     var holdBtn = $("gate-hold");
     holdBtn.addEventListener("pointerdown", function (e) {
@@ -1263,10 +1349,12 @@
     });
     $("math-cancel").addEventListener("click", function () { $("math-modal").classList.add("hidden"); });
     $("grown-back").addEventListener("click", function () { enterHome(); });
-    $("btn-unlock").addEventListener("click", function () { toast("Purchases coming soon"); });
-    $("btn-restore").addEventListener("click", function () { toast("Nothing to restore yet"); });
-    $("btn-unlock-home").addEventListener("click", function () { toast("Purchases coming soon"); });
-    $("btn-restore-home").addEventListener("click", function () { toast("Nothing to restore yet"); });
+    // Purchase lives behind the parent gate: the Grown-ups Unlock
+    // button buys; the home pill routes through the gate first.
+    $("btn-unlock").addEventListener("click", purchaseUnlock);
+    $("btn-restore").addEventListener("click", restorePurchases);
+    $("btn-unlock-home").addEventListener("click", function () { openParentGate(); });
+    $("btn-restore-home").addEventListener("click", restorePurchases);
     $("btn-reset-profile").addEventListener("click", function () {
       if (confirm("Start setup over?")) {
         try { localStorage.removeItem(LS_PROFILE); } catch (e) {}
@@ -1343,6 +1431,14 @@
     initNumpad();
     initSoundToggle();
     applyGenderTheme();
+    refreshUnlockUI();
+    // Start the store in the background; if this Apple/Google account
+    // already owns the unlock, the cached flag is set silently.
+    if (window.CC_Purchases && typeof window.CC_Purchases.init === "function") {
+      try {
+        window.CC_Purchases.init(function () { setUnlocked(true); });
+      } catch (e) {}
+    }
     $("btn-welcome-start").addEventListener("click", function () {
       sfx("select");
       show("s-ob1");

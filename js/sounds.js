@@ -1,4 +1,4 @@
-/* Coloring Worlds — procedural sound effects (Web Audio API, zero audio files).
+/* Coloring Cart — procedural sound effects (Web Audio API, zero audio files).
  * Cheerful kid-friendly tones, generated on the fly. COPPA-clean: no network.
  * window.CW_SFX = { tap, select, pop, colorPick, stroke, undo, error, fanfare,
  *                   toggleMute, isMuted, unlockAudio } */

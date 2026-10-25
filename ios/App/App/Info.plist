@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Coloring Worlds</string>
+        <string>Coloring Cart</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,6 +46,6 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Coloring Worlds saves your child's finished artwork to the photo library.</string>
+	<string>Coloring Cart saves your child's finished artwork to the photo library.</string>
 </dict>
 </plist>

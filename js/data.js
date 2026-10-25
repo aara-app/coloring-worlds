@@ -1,4 +1,4 @@
-/* Coloring Worlds — theme & page manifest (v1: 6 themes, 60 pages, 3 age tiers each) */
+/* Coloring Cart — theme & page manifest (v1: 6 themes, 60 pages, 3 age tiers each) */
 (function () {
   "use strict";
 

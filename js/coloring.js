@@ -1,4 +1,4 @@
-/* Coloring Worlds — canvas coloring engine.
+/* Coloring Cart — canvas coloring engine.
  * Layers: colorLayer (user paint, transparent) under lineLayer (line art, white bg).
  * Display composites with 'multiply' so white line-art bg doesn't cover paint.
  * Flood-fill core is DOM-free and unit-testable in node.
