@@ -42,15 +42,31 @@ public class GallerySavePlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
 
-        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-        if status == .authorized || status == .limited {
-            doSave()
+        if #available(iOS 14, *) {
+            let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+            if status == .authorized || status == .limited {
+                doSave()
+            } else {
+                PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+                    if newStatus == .authorized || newStatus == .limited {
+                        doSave()
+                    } else {
+                        call.reject("Photo library access denied")
+                    }
+                }
+            }
         } else {
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
-                if newStatus == .authorized || newStatus == .limited {
-                    doSave()
-                } else {
-                    call.reject("Photo library access denied")
+            // iOS 13 fallback: legacy authorization APIs (no .addOnly / .limited).
+            let status = PHPhotoLibrary.authorizationStatus()
+            if status == .authorized {
+                doSave()
+            } else {
+                PHPhotoLibrary.requestAuthorization { newStatus in
+                    if newStatus == .authorized {
+                        doSave()
+                    } else {
+                        call.reject("Photo library access denied")
+                    }
                 }
             }
         }
