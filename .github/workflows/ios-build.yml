@@ -55,7 +55,7 @@ jobs:
       - name: Build for simulator (unsigned)
         run: |
           xcodebuild build \
-            -project ios/App/App.xcodeproj \
+            -workspace ios/App/App.xcworkspace \
             -scheme App \
             -sdk iphonesimulator \
             -configuration Debug \
@@ -94,7 +94,7 @@ jobs:
       - name: Archive for App Store (signed)
         run: |
           xcodebuild archive \
-            -project ios/App/App.xcodeproj \
+            -workspace ios/App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
             -configuration Release \
