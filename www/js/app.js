@@ -1328,25 +1328,48 @@
   }
 
   /* ================= parent gate ================= */
-  var holdTimer = null, holdStart = 0;
+  var holdTimer = null, holdStart = 0, holdActive = false;
   function initGate() {
     $("btn-grown").addEventListener("click", function () { openParentGate(); });
     $("gate-cancel").addEventListener("click", function () { $("gate-modal").classList.add("hidden"); stopHold(); });
     var holdBtn = $("gate-hold");
-    holdBtn.addEventListener("pointerdown", function (e) {
-      e.preventDefault();
+    // Hold-to-confirm must survive iOS WKWebView, where a plain pointerdown
+    // gets cancelled mid-press (scroll gesture / long-press handling), so the
+    // 3 s hold never completed. Listen to BOTH touch and pointer events and
+    // start from whichever fires first; holdActive guarantees one press can
+    // only ever start one timer. touchstart uses { passive: false } +
+    // preventDefault so the press is never stolen by scrolling, and pointer
+    // capture keeps the end events aimed at the button even if the finger
+    // drifts a little.
+    function startHold(e) {
+      if (holdActive) return;
+      holdActive = true;
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.pointerId !== undefined && holdBtn.setPointerCapture) {
+        try { holdBtn.setPointerCapture(e.pointerId); } catch (err) {}
+      }
       holdStart = Date.now();
       $("gate-bar").style.transition = "none";
       (function tick() {
+        if (!holdActive) return;
         var p = Math.min(1, (Date.now() - holdStart) / 3000);
         $("gate-bar").style.width = (p * 100) + "%";
         if (p >= 1) { stopHold(); openMath(); return; }
         holdTimer = requestAnimationFrame(tick);
       })();
+    }
+    function endHold() {
+      // No-op if the press already completed (openMath ran) or never began.
+      if (!holdActive) return;
+      stopHold();
+    }
+    holdBtn.addEventListener("touchstart", startHold, { passive: false });
+    holdBtn.addEventListener("pointerdown", startHold);
+    ["touchend", "touchcancel", "pointerup", "pointercancel"].forEach(function (ev) {
+      holdBtn.addEventListener(ev, endHold);
     });
-    ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
-      holdBtn.addEventListener(ev, stopHold);
-    });
+    // A long press must never pop the iOS callout / context menu.
+    holdBtn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
     $("math-cancel").addEventListener("click", function () { $("math-modal").classList.add("hidden"); });
     $("grown-back").addEventListener("click", function () { enterHome(); });
     // Purchase lives behind the parent gate: the Grown-ups Unlock
@@ -1367,6 +1390,7 @@
   function stopHold() {
     if (holdTimer) cancelAnimationFrame(holdTimer);
     holdTimer = null;
+    holdActive = false;
     var bar = $("gate-bar");
     if (bar) { bar.style.transition = "width .2s"; bar.style.width = "0%"; }
   }
