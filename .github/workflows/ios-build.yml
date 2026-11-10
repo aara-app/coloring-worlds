@@ -46,6 +46,27 @@ jobs:
           sed -i '' 's/CURRENT_PROJECT_VERSION = [0-9][0-9]*/CURRENT_PROJECT_VERSION = ${{ github.run_number }}/g' ios/App/App.xcodeproj/project.pbxproj
           grep -m1 "CURRENT_PROJECT_VERSION =" ios/App/App.xcodeproj/project.pbxproj
 
+      # Manual signing must be set on the App target ONLY. Passing
+      # PROVISIONING_PROFILE_SPECIFIER on the xcodebuild command line applies
+      # it to every target in the workspace, and the CocoaPods framework
+      # targets reject provisioning profiles outright ("Pods-App does not
+      # support provisioning profiles"). Patch the App target's two configs
+      # in the project file instead; the local project keeps Automatic
+      # signing for development on a Mac.
+      - name: Apply manual signing to App target only
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          p = 'ios/App/App.xcodeproj/project.pbxproj'
+          src = open(p).read()
+          new, n = re.subn(r'CODE_SIGN_STYLE = Automatic;',
+              'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "Coloring Cart App Store";',
+              src)
+          assert n == 2, f'expected 2 App-target configs, patched {n}'
+          open(p, 'w').write(new)
+          print('patched', n, 'App target configs to Manual signing + profile specifier')
+          PYEOF
+
       - name: Show Xcode / Swift versions
         run: |
           xcodebuild -version
@@ -101,7 +122,6 @@ jobs:
             -archivePath /tmp/ColoringCart.xcarchive \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Coloring Cart App Store" \
             DEVELOPMENT_TEAM=X9H6XM9393
 
       - name: Export signed IPA
