@@ -1,0 +1,245 @@
+name: iOS build (signed App Store)
+
+# Manual trigger. Builds the Capacitor iOS app on a macOS runner and produces
+# a SIGNED App Store .ipa using the distribution certificate + provisioning
+# profile stored as repo secrets (IOS_P12_B64, IOS_P12_PASSWORD,
+# IOS_PROFILE_B64). Same pipeline as Nutrical's ios-build.yml, adapted for
+# Coloring Cart: App ID com.aara.coloringworlds and the "Coloring Cart App
+# Store" profile (created via the ASC API, bound to the shared Apple
+# Distribution certificate). The .ipa is uploaded to TestFlight with fastlane
+# pilot and then added to the internal beta group via the ASC API.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # macos-26: Apple requires the iOS 26 SDK (Xcode 26+) for App Store uploads.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26 (iOS 26 SDK)
+        run: |
+          ls /Applications | grep -i xcode
+          XCODE26=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE26" ]; then echo "ERROR: no Xcode 26 found"; exit 1; fi
+          echo "Using $XCODE26"
+          sudo xcode-select -s "$XCODE26/Contents/Developer"
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Capacitor iOS project
+        run: npx cap sync ios
+
+      # Apple requires every TestFlight upload to carry a HIGHER build number
+      # than the previous one. Derive it from the monotonic workflow run
+      # number so it can never collide with an earlier upload.
+      - name: Set build number from run number
+        run: |
+          sed -i '' 's/CURRENT_PROJECT_VERSION = [0-9][0-9]*/CURRENT_PROJECT_VERSION = ${{ github.run_number }}/g' ios/App/App.xcodeproj/project.pbxproj
+          grep -m1 "CURRENT_PROJECT_VERSION =" ios/App/App.xcodeproj/project.pbxproj
+
+      - name: Show Xcode / Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # Quick unsigned compile check against the simulator SDK.
+      - name: Build for simulator (unsigned)
+        run: |
+          xcodebuild build \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath /tmp/derived-sim \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Install the Apple Distribution identity + App Store provisioning
+      # profile into a throwaway keychain.
+      - name: Install signing certificate and profile
+        env:
+          IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_PROFILE_B64: ${{ secrets.IOS_PROFILE_B64 }}
+        run: |
+          set -euo pipefail
+          echo "$IOS_P12_B64" | base64 -D > /tmp/dist.p12
+          echo "$IOS_PROFILE_B64" | base64 -D > /tmp/ColoringCart_App_Store.mobileprovision
+          security create-keychain -p actions /tmp/build.keychain
+          security set-keychain-settings -t 3600 /tmp/build.keychain
+          security unlock-keychain -p actions /tmp/build.keychain
+          security import /tmp/dist.p12 -k /tmp/build.keychain \
+            -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions /tmp/build.keychain
+          security list-keychains -s /tmp/build.keychain $(security list-keychains -d user | tr -d '"')
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          # Xcode discovers profiles by their UUID filename; the raw download
+          # name is not reliably indexed, which breaks -exportArchive lookup.
+          # UUID of the "Coloring Cart App Store" profile.
+          cp /tmp/ColoringCart_App_Store.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/c4ebff8f-8f56-46f9-ad84-6eeded513d77.mobileprovision
+          # Diagnostic: confirm the installed profile targets this app id.
+          security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/c4ebff8f-8f56-46f9-ad84-6eeded513d77.mobileprovision | grep -c "com.aara.coloringworlds" | xargs echo "coloringworlds entries in profile:"
+          security find-identity -v -p codesigning /tmp/build.keychain
+
+      # Signed device archive with manual signing.
+      - name: Archive for App Store (signed)
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath /tmp/ColoringCart.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="Coloring Cart App Store" \
+            DEVELOPMENT_TEAM=X9H6XM9393
+
+      - name: Export signed IPA
+        run: |
+          cat > /tmp/exportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>X9H6XM9393</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.aara.coloringworlds</key>
+                  <string>Coloring Cart App Store</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath /tmp/ColoringCart.xcarchive \
+            -exportPath /tmp/ipa \
+            -exportOptionsPlist /tmp/exportOptions.plist
+          ls -la /tmp/ipa
+
+      - name: Upload signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ColoringCart-signed-ipa
+          path: /tmp/ipa/*.ipa
+          retention-days: 30
+
+      # Push the build to App Store Connect for TestFlight.
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          echo "$ASC_KEY_P8_B64" | base64 -D > /tmp/AuthKey.p8
+          chmod 600 /tmp/AuthKey.p8
+          # fastlane's api_key_path JSON needs the key content inline ("key"),
+          # not a filepath reference.
+          python3 <<'PYEOF'
+          import json, os
+          p8 = open('/tmp/AuthKey.p8').read()
+          json.dump({'key_id': os.environ['ASC_KEY_ID'], 'issuer_id': os.environ['ASC_ISSUER_ID'], 'key': p8}, open('/tmp/asc_api_key.json','w'))
+          print('api key json written')
+          PYEOF
+          sudo gem install fastlane -NV --no-document >/tmp/fastlane-install.log 2>&1 || tail -20 /tmp/fastlane-install.log
+          IPA=$(ls /tmp/ipa/*.ipa | head -1)
+          echo "Uploading $IPA to TestFlight..."
+          fastlane pilot upload --api_key_path /tmp/asc_api_key.json --ipa "$IPA" --skip_waiting_for_build_processing true
+          shred -u /tmp/AuthKey.p8 || rm -f /tmp/AuthKey.p8
+
+      # pilot upload alone leaves the build undistributed (testers never see
+      # an Update). Wait for Apple processing, then add the build to the
+      # internal beta group so it appears in TestFlight.
+      - name: Distribute to internal TestFlight group
+        env:
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          BUNDLE_ID: com.aara.coloringworlds
+          # The build we just uploaded carries CFBundleVersion = this run's number.
+          EXPECTED_VERSION: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          echo "$ASC_KEY_P8_B64" | base64 -D > /tmp/AuthKey.p8
+          chmod 600 /tmp/AuthKey.p8
+          python3 - <<'PYEOF'
+          import base64, json, os, time, urllib.request, urllib.error
+          key = open('/tmp/AuthKey.p8').read()
+          kid, iss = os.environ['ASC_KEY_ID'], os.environ['ASC_ISSUER_ID']
+          # Minimal ES256 JWT via openssl (no extra deps on the runner).
+          import subprocess, tempfile
+          def b64(b): return base64.urlsafe_b64encode(b).rstrip(b'=').decode()
+          header = b64(json.dumps({'alg':'ES256','kid':kid,'typ':'JWT'}).encode())
+          with tempfile.NamedTemporaryFile('w', delete=False) as f: f.write(key); kin = f.name
+          # DER -> raw R||S for JWS
+          def der_to_raw(der):
+              assert der[0] == 0x30; i = 2
+              if der[1] & 0x80: i += 1 + (der[1] & 0x7f)
+              assert der[i] == 0x02; i += 1; rl = der[i]; i += 1
+              r = der[i:i+rl]; i += rl; assert der[i] == 0x02; i += 1; sl = der[i]; i += 1
+              s = der[i:i+sl]
+              return r.rjust(32, b'\x00')[-32:] + s.rjust(32, b'\x00')[-32:]
+          def make_token():
+              now = int(time.time())
+              payload = b64(json.dumps({'iss':iss,'iat':now,'exp':now+1200,'aud':'appstoreconnect-v1'}).encode())
+              signing_input = header + '.' + payload
+              with tempfile.NamedTemporaryFile('w', delete=False) as f: f.write(signing_input); sin = f.name
+              sig_der = subprocess.run(['openssl','dgst','-sha256','-sign',kin,sin],
+                                       capture_output=True, check=True).stdout
+              return signing_input + '.' + b64(der_to_raw(sig_der)), time.time()
+          token, token_at = make_token()
+          BASE = 'https://api.appstoreconnect.apple.com'
+          def api(method, path, body=None):
+              global token, token_at
+              if time.time() - token_at > 900:  # Apple caps JWT lifetime at 20 min
+                  token, token_at = make_token()
+              req = urllib.request.Request(BASE + path, method=method,
+                  headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+                  data=json.dumps(body).encode() if body is not None else None)
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      raw = r.read()
+                      return r.status, (json.loads(raw) if raw.strip() else None)
+              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:500]
+          s, apps = api('GET', '/v1/apps?filter[bundleId]=' + os.environ['BUNDLE_ID'] + '&fields[apps]=name')
+          assert s == 200 and apps['data'], 'app lookup failed: %s %s' % (s, apps)
+          app_id = apps['data'][0]['id']
+          s, groups = api('GET', '/v1/apps/%s/betaGroups?limit=20' % app_id)
+          grp = next((g for g in groups.get('data', []) if g['attributes'].get('isInternalGroup')), None)
+          assert grp, 'no internal beta group found'
+          print('internal group:', grp['attributes']['name'], grp['id'])
+          build_id, version = None, None
+          expected = os.environ['EXPECTED_VERSION']
+          for _ in range(30):  # wait up to ~30 min for processing
+              s, builds = api('GET', '/v1/apps/%s/builds?limit=5&fields[builds]=version,processingState' % app_id)
+              # Only accept the build THIS run uploaded (a previous VALID build
+              # must not satisfy the wait — that silently distributes the old build).
+              cands = [b for b in builds.get('data', [])
+                       if b['attributes'].get('processingState') == 'VALID'
+                       and str(b['attributes'].get('version')) == str(expected)]
+              if cands:
+                  build_id, version = cands[0]['id'], cands[0]['attributes']['version']
+                  break
+              print('waiting for build %s to finish processing...' % expected); time.sleep(60)
+          assert build_id, 'timed out waiting for build processing'
+          print('distributing build', version, build_id)
+          s, _ = api('POST', '/v1/betaGroups/%s/relationships/builds' % grp['id'],
+                     {'data': [{'type': 'builds', 'id': build_id}]})
+          print('add-to-group status:', s)
+          assert s in (200, 204), 'failed to add build to group'
+          print('Build %s is now in TestFlight for internal testers.' % version)
+          PYEOF
+          shred -u /tmp/AuthKey.p8 || rm -f /tmp/AuthKey.p8
