@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@capacitor/core": "^6.1.0",
+    "@capacitor/haptics": "^6.0.3",
     "cordova-plugin-purchase": "^13.19.1",
     "gallery-save": "file:plugins/gallery-save"
   },

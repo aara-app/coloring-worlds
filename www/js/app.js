@@ -1329,34 +1329,80 @@
 
   /* ================= parent gate ================= */
   var holdTimer = null, holdStart = 0, holdActive = false;
+  /* Gate haptics via the Capacitor Haptics plugin: a light buzz when the
+   * hold starts, a success buzz when it completes. Same defensive guard
+   * as sounds.js — native only, silently no-ops on web / missing plugin. */
+  function gateHaptic(success) {
+    try {
+      var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+      if (!H) return;
+      var p = success ? H.notification({ type: "SUCCESS" })  /* NotificationType.Success */
+                      : H.impact({ style: "LIGHT" });        /* ImpactStyle.Light */
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  /* One light tick, debounced via the shared window.__cwBuzzAt stamp
+   * (sounds.js's buzzLight uses the same stamp) so a single tap can
+   * never buzz twice when two mechanisms both notice it. */
+  function buzzTap() {
+    var now = Date.now();
+    if (window.__cwBuzzAt && now - window.__cwBuzzAt < 120) return;
+    window.__cwBuzzAt = now;
+    gateHaptic(false);
+  }
+  /* Keyboard-style tactile feedback (Raji's ask): EVERY tap on an
+   * option or button should be felt, not just taps that play a sound.
+   * One delegated pointerdown listener covers all interactive elements:
+   * every <button>, plus the app's tappable classes by name (palette
+   * swatches, magic/pattern swatches, tool and brush-size buttons, page
+   * cards, train world carts, onboarding interest/age/gender tiles —
+   * all are <button> elements today; the classes keep this working if
+   * that ever changes). pointerdown only, never pointermove, so
+   * drawing strokes never buzz; the coloring canvas is not a target
+   * (its fill taps already tick via the CW_SFX.pop hook in sounds.js). */
+  var TAP_TARGET = "button, .color-cell, .magic-sw, .tool-btn, .size-btn," +
+    " .page-card, .cart, .interest-btn, .ob-big, .age-circle";
+  function initTapHaptics() {
+    document.addEventListener("pointerdown", function (e) {
+      var t = e.target;
+      if (t && t.closest && t.closest(TAP_TARGET)) buzzTap();
+    });
+  }
   function initGate() {
     $("btn-grown").addEventListener("click", function () { openParentGate(); });
     $("gate-cancel").addEventListener("click", function () { $("gate-modal").classList.add("hidden"); stopHold(); });
     var holdBtn = $("gate-hold");
-    // Hold-to-confirm must survive iOS WKWebView, where a plain pointerdown
-    // gets cancelled mid-press (scroll gesture / long-press handling), so the
-    // 3 s hold never completed. Listen to BOTH touch and pointer events and
-    // start from whichever fires first; holdActive guarantees one press can
-    // only ever start one timer. touchstart uses { passive: false } +
-    // preventDefault so the press is never stolen by scrolling, and pointer
-    // capture keeps the end events aimed at the button even if the finger
-    // drifts a little.
+    // Hold-to-confirm v2. Two iOS WKWebView traps broke earlier builds:
+    // (1) a plain pointerdown gets cancelled mid-press (scroll gesture /
+    // long-press handling), and (2) requestAnimationFrame callbacks are
+    // suspended while a touch is held down, so an rAF-driven progress bar
+    // never fills until the finger lifts — by which time the release has
+    // already cancelled the hold. So: start from BOTH touchstart
+    // ({ passive: false } + preventDefault, so the press is never stolen by
+    // scrolling) and pointerdown, guarded by holdActive so one press starts
+    // exactly one timer; drive progress with setInterval (not rAF), which
+    // keeps firing during a held touch. Only a real release (touchend /
+    // pointerup) ends the hold early — touchcancel/pointercancel fire
+    // spuriously on iOS and must NOT stop it; the math question after the
+    // hold is the real gate. touchmove is swallowed for the same reason.
     function startHold(e) {
       if (holdActive) return;
       holdActive = true;
+      buzzTap();
       if (e && e.preventDefault) e.preventDefault();
       if (e && e.pointerId !== undefined && holdBtn.setPointerCapture) {
         try { holdBtn.setPointerCapture(e.pointerId); } catch (err) {}
       }
       holdStart = Date.now();
-      $("gate-bar").style.transition = "none";
-      (function tick() {
+      var bar = $("gate-bar");
+      bar.style.transition = "none";
+      bar.style.width = "0%";
+      holdTimer = setInterval(function () {
         if (!holdActive) return;
         var p = Math.min(1, (Date.now() - holdStart) / 3000);
-        $("gate-bar").style.width = (p * 100) + "%";
-        if (p >= 1) { stopHold(); openMath(); return; }
-        holdTimer = requestAnimationFrame(tick);
-      })();
+        bar.style.width = (p * 100) + "%";
+        if (p >= 1) { stopHold(); gateHaptic(true); openMath(); }
+      }, 50);
     }
     function endHold() {
       // No-op if the press already completed (openMath ran) or never began.
@@ -1365,7 +1411,8 @@
     }
     holdBtn.addEventListener("touchstart", startHold, { passive: false });
     holdBtn.addEventListener("pointerdown", startHold);
-    ["touchend", "touchcancel", "pointerup", "pointercancel"].forEach(function (ev) {
+    holdBtn.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+    ["touchend", "pointerup"].forEach(function (ev) {
       holdBtn.addEventListener(ev, endHold);
     });
     // A long press must never pop the iOS callout / context menu.
@@ -1388,7 +1435,7 @@
     });
   }
   function stopHold() {
-    if (holdTimer) cancelAnimationFrame(holdTimer);
+    if (holdTimer) { clearInterval(holdTimer); cancelAnimationFrame(holdTimer); }
     holdTimer = null;
     holdActive = false;
     var bar = $("gate-bar");
@@ -1451,6 +1498,7 @@
     preloadStamps();
     initOnboarding();
     initStudio();
+    initTapHaptics();
     initGate();
     initNumpad();
     initSoundToggle();

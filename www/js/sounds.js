@@ -70,15 +70,48 @@
     src.start(t0);
   }
 
+  /* Tactile feedback via the Capacitor Haptics plugin (native builds
+   * only), so a tap is something you FEEL as well as hear. Accessed
+   * defensively: on the plain web build, or if the plugin is missing,
+   * these silently do nothing and never throw. */
+  function hapticsPlugin() {
+    try {
+      return (window.Capacitor && window.Capacitor.Plugins &&
+        window.Capacitor.Plugins.Haptics) || null;
+    } catch (e) { return null; }
+  }
+  function buzzLight() {
+    /* Debounced against app.js's global tap-haptic listener via the
+     * shared window.__cwBuzzAt stamp: one physical tap = one tick,
+     * whichever mechanism fires first. */
+    var now = Date.now();
+    if (window.__cwBuzzAt && now - window.__cwBuzzAt < 120) return;
+    window.__cwBuzzAt = now;
+    var H = hapticsPlugin();
+    if (!H) return;
+    try {
+      var p = H.impact({ style: "LIGHT" }); /* ImpactStyle.Light */
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  function buzzSuccess() {
+    var H = hapticsPlugin();
+    if (!H) return;
+    try {
+      var p = H.notification({ type: "SUCCESS" }); /* NotificationType.Success */
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+
   var api = {
     /* short cheerful blip for generic button taps */
-    tap: function () { note(720, 0.09, "sine", 0, 0.35); },
+    tap: function () { buzzLight(); note(720, 0.09, "sine", 0, 0.35); },
     /* happy two-note for selections / confirmations */
-    select: function () { note(523, 0.10, "triangle", 0, 0.4); note(784, 0.14, "triangle", 0.09, 0.4); },
+    select: function () { buzzLight(); note(523, 0.10, "triangle", 0, 0.4); note(784, 0.14, "triangle", 0.09, 0.4); },
     /* tap-to-fill pop */
-    pop: function () { note([500, 950], 0.12, "triangle", 0, 0.45); },
+    pop: function () { buzzLight(); note([500, 950], 0.12, "triangle", 0, 0.45); },
     /* soft chime when picking a color */
-    colorPick: function () { note(880, 0.10, "sine", 0, 0.3); note(1320, 0.12, "sine", 0.06, 0.22); },
+    colorPick: function () { buzzLight(); note(880, 0.10, "sine", 0, 0.3); note(1320, 0.12, "sine", 0.06, 0.22); },
     /* subtle swish at the start of a brush stroke */
     stroke: function () { swish(0.16, 0.08); },
     /* long soft whoosh for the train travel transition */

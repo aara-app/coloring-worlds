@@ -1,4 +1,4 @@
-/* Coloring Cart — theme & page manifest (v1: 6 themes, 60 pages, 3 age tiers each) */
+/* Coloring Cart — theme & page manifest (9 themes, 88 pages, 3 age tiers each) */
 (function () {
   "use strict";
 
@@ -45,6 +45,23 @@
         pg("halloween", "bat", "Bat"), pg("halloween", "owl", "Owl"),
         pg("halloween", "mummy", "Mummy"), pg("halloween", "trickortreat", "Trick or Treat")
       ] },
+    { id: "christmas",   title: "Christmas",        common: true,  free: true,  iconPage: "santa",
+      gradient: "linear-gradient(160deg,#ff7a59 0%,#d61c4e 100%)",
+      pages: [
+        pg("christmas", "santa", "Santa Claus"), pg("christmas", "reindeer", "Reindeer"),
+        pg("christmas", "tree", "Christmas Tree"), pg("christmas", "snowman", "Snowman"),
+        pg("christmas", "gifts", "Presents"), pg("christmas", "ornaments", "Ornaments"),
+        pg("christmas", "stockings", "Stockings"), pg("christmas", "gingerbreadhouse", "Gingerbread House"),
+        pg("christmas", "sleigh", "Santa's Sleigh"), pg("christmas", "candycane", "Candy Cane")
+      ] },
+    { id: "elfworkshop", title: "Elf Workshop",     common: true,  free: false, iconPage: "elf",
+      gradient: "linear-gradient(160deg,#5ed97a 0%,#159947 100%)",
+      pages: [
+        pg("elfworkshop", "elf", "Elf"), pg("elfworkshop", "elfworkshop", "Elf Workshop"),
+        pg("elfworkshop", "toymaker", "Toy Maker"), pg("elfworkshop", "elfsleigh", "Loading the Sleigh"),
+        pg("elfworkshop", "elflist", "The Big List"), pg("elfworkshop", "elfcookies", "Cookie Baker"),
+        pg("elfworkshop", "elfreindeer", "Feeding Reindeer"), pg("elfworkshop", "elfband", "Elf Band")
+      ] },
     { id: "princess",    title: "Princess Castle",  genders: ["girl"], free: false, iconPage: "princess",
       gradient: "linear-gradient(160deg,#ff9ecf 0%,#f0569d 100%)",
       pages: [
@@ -90,7 +107,8 @@
     princess: ["princess"],
     animals: ["farm", "wild", "baby"],
     space: [],
-    ocean: []
+    ocean: [],
+    christmas: ["christmas", "elfworkshop"]
   };
 
   var INTERESTS = [
@@ -105,7 +123,9 @@
     { id: "space", label: "Space",
       svg: '<img src="assets/ui/interest-space.png" alt="">' },
     { id: "ocean", label: "Ocean",
-      svg: '<img src="assets/ui/interest-ocean.png" alt="">' }
+      svg: '<img src="assets/ui/interest-ocean.png" alt="">' },
+    { id: "christmas", label: "Christmas",
+      svg: '<img src="assets/ui/interest-christmas.png" alt="">' }
   ];
 
   /* Studio palette: first 12 (brightest kid colors) free, rest premium-locked */

@@ -46,10 +46,22 @@
       try { entitlementCb(true); } catch (e) {}
     }
   }
+  /* Success buzz via the Capacitor Haptics plugin when a purchase
+   * completes. Defensive guard: native only, silently no-ops on web /
+   * missing plugin, never throws into the purchase flow. */
+  function purchaseSuccessHaptic() {
+    try {
+      var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+      if (!H) return;
+      var p = H.notification({ type: "SUCCESS" }); /* NotificationType.Success */
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
   function settlePurchase(result) {
     if (pendingPurchase) {
       var p = pendingPurchase;
       pendingPurchase = null;
+      if (result && result.ok && result.status === "purchased") purchaseSuccessHaptic();
       try { p.resolve(result); } catch (e) {}
     }
   }
