@@ -155,7 +155,7 @@ body.boy .ob-title, body.boy .topbar-title {
   width: 100%; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 6px 0 rgba(170, 95, 30, .3); transition: transform .12s ease, opacity .15s ease, filter .15s ease;
 }
 .age-next:active { transform: scale(.97); }
-.age-next:disabled { opacity: .45; filter: grayscale(.35); }
+.age-next:disabled { opacity: 1; filter: none; background: linear-gradient(180deg, #b3c3d2, #8fa5ba); color: #f4f8fb; }
 
 /* ---------- onboarding ---------- */
 .ob-wrap { max-width: 600px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 3dvh) 18px calc(env(safe-area-inset-bottom, 0px) + 16px); text-align: center; position: relative; }
@@ -228,6 +228,10 @@ body.boy .ob-title, body.boy .topbar-title {
 .interest-btn:active { transform: scale(.93); }
 .interest-btn.sel { border-color: var(--blue); background: linear-gradient(180deg, #fff, var(--blue-soft)); animation: pop .3s ease; }
 .interest-btn img { width: 88px; height: 88px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(58, 46, 63, .18)); }
+/* Keep the interests CTA clear of the fixed hills strip (104px) so it
+ * never sits inside the artwork. */
+#s-ob3 .ob-wrap { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
+#ob-start { position: relative; z-index: 2; margin-top: 20px; }
 .cta-btn {
   border: none; cursor: pointer; font-family: inherit; font-size: 25px; font-weight: 900;
   color: #fff; background: linear-gradient(180deg, #6fc0ff, var(--blue-dark));
@@ -236,7 +240,14 @@ body.boy .ob-title, body.boy .topbar-title {
   transition: transform .12s ease;
 }
 .cta-btn:active { transform: scale(.94); }
-.cta-btn:disabled { opacity: .45; filter: grayscale(.4); }
+/* Disabled CTA stays fully visible as a solid muted pill — at 45% opacity
+ * it vanished into the hills strip behind it (Raji's screenshot: the
+ * "Start Coloring!" button on the interests screen was unreadable). */
+.cta-btn:disabled {
+  opacity: 1; filter: none; color: #f4f8fb;
+  background: linear-gradient(180deg, #b3c3d2, #8fa5ba);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .06), 0 5px 0 rgba(70, 90, 110, .3), 0 10px 20px rgba(70, 90, 110, .25);
+}
 .cta-btn.secondary {
   background: linear-gradient(180deg, #6fc0ff, var(--blue-dark)); font-size: 21px; padding: 15px 36px; min-height: 62px;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), inset 0 -4px 0 rgba(0, 0, 0, .08), 0 6px 0 rgba(30, 90, 150, .35), 0 12px 24px rgba(77, 171, 255, .35);
@@ -352,10 +363,21 @@ body.boy .ob-title, body.boy .topbar-title {
 .studio-row { flex: 1; min-height: 0; display: flex; gap: 0; }
 .canvas-wrap {
   flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center;
-  background: #ffffff;
+  /* warm "desk" the paper sheet sits on — plain white here made the
+   * white canvas invisible and the studio look like an empty void,
+   * worst in portrait Free Draw (Raji's screenshot, 2026-11-19). */
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 217, 61, .20) 0, transparent 42%),
+    radial-gradient(circle at 85% 88%, rgba(255, 107, 157, .12) 0, transparent 45%),
+    linear-gradient(180deg, #fdf6e9 0%, #f9ecd7 55%, #f3e2c8 100%);
   overflow: hidden; position: relative;
 }
-#color-canvas { touch-action: none; display: block; }
+#color-canvas {
+  touch-action: none; display: block; background: #ffffff;
+  border-radius: 16px;
+  outline: 1px solid rgba(133, 96, 40, .14);
+  box-shadow: 0 14px 34px rgba(101, 72, 28, .28), 0 3px 0 rgba(101, 72, 28, .10);
+}
 /* floating chrome over the canvas (back + picture name) */
 .canvas-back {
   position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 10px; z-index: 7;

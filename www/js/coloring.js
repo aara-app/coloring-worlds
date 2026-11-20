@@ -604,7 +604,11 @@
   /* Full-frame (SIZE x SIZE) pattern pixels for a pattern fill mode,
    * drawn once per (mode, color) and cached (max 4 entries). */
   ColoringEngine.prototype._patternData = function (mode) {
-    var key = mode + ":" + this.color;
+    /* The S/M/L size choice scales the pattern tile: S = smaller, denser
+     * motifs; L = bigger motifs. Without this the size buttons appeared
+     * dead on tap-fills (a fill ignored brushSize entirely). */
+    var pScale = this.brushSize <= 16 ? 0.65 : (this.brushSize >= 40 ? 1.6 : 1);
+    var key = mode + ":" + this.color + ":" + pScale;
     if (this._patternCache[key]) return this._patternCache[key];
     var tile = 96;
     var tc = document.createElement("canvas");
@@ -678,6 +682,14 @@
       t.fillStyle = "#ffffff";
     } else {
       return null;
+    }
+    if (pScale !== 1) {
+      var scaled = document.createElement("canvas");
+      scaled.width = Math.round(tile * pScale); scaled.height = Math.round(tile * pScale);
+      var sctx = scaled.getContext("2d");
+      sctx.imageSmoothingEnabled = true;
+      sctx.drawImage(tc, 0, 0, scaled.width, scaled.height);
+      tc = scaled;
     }
     var full = document.createElement("canvas");
     full.width = SIZE; full.height = SIZE;

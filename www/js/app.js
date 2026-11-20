@@ -692,7 +692,9 @@
     if (!engine) return;
     var wrap = $("canvas-wrap");
     var w = wrap.clientWidth, h = wrap.clientHeight;
-    var side = Math.max(50, Math.min(w, h));
+    // 16px of "desk" around the paper so its shadow and rounded corners
+    // read against the studio backdrop instead of touching the edges.
+    var side = Math.max(50, Math.min(w, h) - 32);
     var cv = $("color-canvas");
     cv.style.width = side + "px";
     cv.style.height = side + "px";
